@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fibrx — Debo de chequear antes de gastar v2</title>
+<style>
+/* ============================================================
+   FIBRX — TABLERO "DEBO DE CHEQUEAR" v2
+   Sin dependencias externas: CSS + JS vanilla.
+   ============================================================ */
+:root{
+  --rojo:#d64545;        /* Opción A: gastar */
+  --verde:#2e9e5b;       /* Plan B seguro (gana) */
+  --amarillo:#c9a227;    /* Alertas: pierde vs inflación */
+  --azul:#2f6fb2;        /* Plan B riesgoso */
+  --fondo:#111418;
+  --tarjeta:#1b2027;
+  --texto:#e8eaed;
+  --texto-dim:#9aa3ad;
+  --borde:#2c333d;
+  --monospace:"Courier New",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fondo);color:var(--texto);
+     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+     line-height:1.5;padding:24px;max-width:1080px;margin:0 auto}
+h1{font-size:1.6rem;margin-bottom:4px}
+h2{font-size:1.1rem;margin:28px 0 10px;color:var(--texto-dim);
+   text-transform:uppercase;letter-spacing:.08em}
+.sub{color:var(--texto-dim);margin-bottom:20px}
+.status-bar{background:#232a33;padding:8px 12px;border-radius:6px;font-size:0.8rem;margin-bottom:16px;color:var(--texto-dim);border:1px solid var(--borde)}
+
+/* ---------- FASE 1: Formulario de Intención ---------- */
+.panel{background:var(--tarjeta);border:1px solid var(--borde);
+       border-radius:10px;padding:18px;margin-bottom:14px}
+.campo{margin-bottom:12px}
+label{display:block;font-size:.85rem;color:var(--texto-dim);margin-bottom:4px}
+input,select,button{font:inherit;color:var(--texto);background:#232a33;
+       border:1px solid var(--borde);border-radius:6px;padding:9px 11px;width:100%}
+input:focus,select:focus{outline:2px solid var(--azul)}
+button{cursor:pointer;font-weight:600;border:none}
+button.primario{background:var(--azul);color:#fff}
+button.primario:hover{filter:brightness(1.15)}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.fila{grid-template-columns:1fr}}
+
+/* ---------- FASE 3: Tablero ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tarjeta{background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;
+         padding:16px;border-top:4px solid var(--borde)}
+.tarjeta.gastar{border-top-color:var(--rojo)}
+.tarjeta.seguro{border-top-color:var(--verde)}
+.tarjeta.riesgo{border-top-color:var(--azul)}
+.tarjeta h3{font-size:1rem;margin-bottom:8px}
+.grande{font-size:1.5rem;font-weight:700}
+.moneda{font-variant-numeric:tabular-nums;font-family:var(--monospace)}
+.dim{color:var(--texto-dim);font-size:.85rem}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;border-radius:20px;
+       padding:3px 10px;margin-top:6px}
+.badge.ok{background:rgba(46,158,91,.15);color:#5fce8b;border:1px solid var(--verde)}
+.badge.pierde{background:rgba(201,162,39,.15);color:#e0c04a;border:1px solid var(--amarillo)}
+.badge.no-elegible{background:rgba(214,69,69,.12);color:#e78a8a;border:1px solid var(--rojo)}
+canvas{width:100%;height:180px;background:#12161b;border-radius:6px;margin-top:8px}
+
+/* ---------- FASE 4 y 5: Decisión y Seguimiento ---------- */
+.botones-decision{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+button.gasto{background:var(--rojo);color:#fff}
+button.invierto{background:var(--verde);color:#fff}
+button.pendiente{background:#4a5560;color:#fff}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--borde);text-align:left}
+th{color:var(--texto-dim);font-weight:600;font-size:.78rem;text-transform:uppercase}
+.veredicto-eficiente{color:#5fce8b;font-weight:700}
+.veredicto-caro{color:#e78a8a;font-weight:700}
+.disclaimer{font-size:.78rem;color:var(--texto-dim);border-top:1px solid var(--borde);
+            margin-top:30px;padding-top:14px}
+</style>
+</head>
+<body>
+
+<h1>💸 Fibrx — Debo de chequear antes de gastar (v2)</h1>
+<p class="sub">Educación financiera: compará tu gasto contra los Plan B reales antes de pasar la tarjeta.</p>
+
+<div class="status-bar" id="statusBar">
+  🔄 Estado de tasas: <span id="origenTasas">Cargando benchmark...</span> (Última actualización: <span id="fechaTasas">--/--/----</span>)
+</div>
+
+<!-- ============ FASE 1: INTENCIÓN DE COMPRA ============ -->
+<section class="panel">
+  <div class="campo">
+    <label>¿Qué querés comprar/pagar?</label>
+    <input id="item" type="text" placeholder="Ej: zapatillas, plan de ahorro, cambio de celular" value="Zapatillas">
+  </div>
+  <div class="fila">
+    <div class="campo">
+      <label>Tipo de gasto</label>
+      <select id="tipo">
+        <option value="UNICO">Único (pago todo hoy)</option>
+        <option value="RECURRENTE" selected>Recurrente / cuotas (por mes)</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label>Monto ($ por mes si es recurrente; total si es único)</label>
+      <input id="monto" type="number" min="1" step="any" value="80000">
+    </div>
+    <div class="campo">
+      <label>Horizonte / cantidad de cuotas (meses)</label>
+      <input id="meses" type="number" min="1" max="360" value="36">
+    </div>
+    <div class="campo">
+      <label>Usos esperados (para cálculo de costo por uso)</label>
+      <input id="usos" type="number" min="0" step="any" value="60" placeholder="¿Cuántas veces lo vas a usar?">
+    </div>
+  </div>
+  <div class="campo">
+    <label>Tu Ingreso Mensual Neto ($ ARS) — Para perfilado de gasto eficiente</label>
+    <input id="ingresoMensual" type="number" min="1" step="any" value="1500000" placeholder="Ej: 1500000">
+  </div>
+  <button class="primario" onclick="ejecutar()">🔍 Debo de chequear antes de gastar</button>
+</section>
+
+<!-- ============ FASE 3: RESULTADOS ============ -->
+<div id="resultados" style="display:none">
+  <h2>Opción A — Gastarlo</h2>
+  <div class="grid" id="zonaGastar"></div>
+
+  <h2>Plan B — Invertirlo (tasa fija, seguro)</h2>
+  <div class="grid" id="zonaSeguro"></div>
+
+  <h2>Plan B — Renta variable / CEDEAR (con riesgo y devaluación ARS/USD)</h2>
+  <div class="grid" id="zonaRiesgo"></div>
+
+  <!-- ============ FASE 4: DECISIÓN ============ -->
+  <section class="panel">
+    <h2 style="margin-top:0">Tu decisión</h2>
+    <p class="dim">Registrar la decisión habilita el seguimiento (Fase 5). Nada se envía a ningún servidor: queda en tu navegador.</p>
+    <div class="botones-decision">
+      <button class="gasto"     onclick="decidir('GASTADO')">❌ Lo gasté igual</button>
+      <button class="invierto" onclick="decidir('INVERTIDO_PLAN_B')">✅ No gasté: lo invertí</button>
+      <button class="pendiente" onclick="decidir('PENDIENTE')">⏸️ Todavía no sé</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ FASE 5: REGISTRO Y SEGUIMIENTO ============ -->
+<section class="panel" id="seccionRegistro" style="display:none">
+  <h2 style="margin-top:0">Registro "Debo de chequear" + seguimiento</h2>
+  <p class="dim">Pasados unos meses: ¿lo compraste? ¿Cuántas veces lo usaste? El costo por uso real corrige la predicción.</p>
+  <table>
+    <thead><tr><th>Fecha</th><th>Ítem</th><th>Monto</th><th>Decisión</th><th>Usos reales</th><th>Costo por uso</th><th>Veredicto (Perfilado)</th><th></th></tr></thead>
+    <tbody id="tablaRegistro"></tbody>
+  </table>
+</section>
+
+<p class="disclaimer">
+⚠️ Aviso educativo: esta página es un simulador con fines educativos, no es asesoramiento financiero personalizado.
+Los rendimientos pasados no garantizan resultados futuros. Las tasas (TNA) se convierten a efectivas y cambian a
+diario: verificá siempre en tu app antes de operar. Las comisiones e Impuesto a las Ganancias se estiman y pueden variar.
+</p>
+
+<script>
+/* ============================================================
+   MOTOR "DEBO ENGINE v2" EN JAVASCRIPT
+   Soporte para ingesta JSON + Monte Carlo Bi-Variable (CEDEAR)
+   ============================================================ */
+
+// Vehículos por defecto (Fallback local si no existe tasas_mercado.json)
+let VEHICULOS = [
+  { id:"BALZ_MM_PESOS",  nombre:"FCI Balanz Money Market (T+0)",  source:"BALANZ_FCI",
+    tna:0.81,    fees:0.0025+0.0008*1.21, min:1000,      liq:0,  tax:0.15, risky:false, cur:"ARS" },
+  { id:"BALZ_LECAPS",    nombre:"FCI Balanz Lecaps",               source:"BALANZ_FCI",
+    tna:0.72,    fees:0.0020+0.0008*1.21, min:1000,      liq:0,  tax:0.15, risky:false, cur:"ARS" },
+  { id:"IOL_CASH_MGMT",  nombre:"FCI IOL Cash Management",         source:"IOL_FCI",
+    tna:0.75,    fees:0.0030,             min:100,       liq:1,  tax:0.15, risky:false, cur:"ARS" },
+  { id:"BALZ_CAUCION",   nombre:"Caución colocadora 24h (Balanz)", source:"BALANZ_CAUCION",
+    tna:0.81,    fees:0.0,                min:1000000,   liq:1,  tax:0.15, risky:false, cur:"ARS" },
+  { id:"MP_MONEY_MARKET",nombre:"Mercado Pago Money Market",       source:"WALLET_PUBLIC",
+    tna:0.1862,  fees:0.0,                min:1,         liq:0,  tax:0.15, risky:false, cur:"ARS" },
+  { id:"UALA_REMUN",     nombre:"Ualá Cuenta Remunerada",          source:"WALLET_PUBLIC",
+    tna:0.24,    fees:0.0,                min:10000,     liq:0,  tax:0.15, risky:false, cur:"ARS" },
+  { id:"IOL_DOLAR",      nombre:"IOL Dólar Ahorro Plus (USD)",     source:"IOL_FCI",
+    tna:0.06,    fees:0.0,                min:5,         liq:1,  tax:0.15, risky:false, cur:"USD" },
+  { id:"CEDEAR_SPY",     nombre:"CEDEAR SPY (S&P 500 en ARS)",     source:"MARKET_DATA",
+    tna:0,       fees:0.001,              min:10000,     liq:1,  tax:0.15, risky:true,
+    muUSD:0.08, sigmaUSD:0.18, muDev:0.35, sigmaDev:0.15, cur:"ARS" }
+];
+
+const INFLACION_MENSUAL = { ARS:0.028, USD:0.0025 };
+
+// ---------- Helpers matemáticos ----------
+const fmt = n => "$ " + Math.round(n).toLocaleString("es-AR");
+const temNeto = v => v.tna/12 - v.fees/12;
+const teaNeta = v => Math.pow(1+temNeto(v),12)-1;
+const deflactor = (cur,n) => Math.pow(1+INFLACION_MENSUAL[cur],n);
+const netoImpuestos = (fv,aportado,tax) => aportado + (fv-aportado)*(1-tax);
+
+function fvAnualidad(pmt,n,r){
+  if(r===0) return pmt*n;
+  return pmt * (Math.pow(1+r,n)-1)/r * (1+r);
+}
+
+function mulberry32(semilla){
+  return function(){
+    semilla |= 0; semilla = semilla + 0x6D2B79F5 | 0;
+    let t = Math.imul(semilla ^ semilla >>> 15, 1 | semilla);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function gaussiana(rng){
+  let u=0; while(u===0) u=rng();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*rng());
+}
+
+// ---------- Plan B seguro ----------
+function calcSeguro(pmt,n,v){
+  const aportado = pmt*n;
+  const fv = netoImpuestos(fvAnualidad(pmt,n,temNeto(v)), aportado, v.tax);
+  const inflacionAnual = deflactor(v.cur,n);
+  return {
+    elegible: pmt >= v.min,
+    tea: teaNeta(v),
+    fvNominal: fv,
+    fvReal: fv/inflacionAnual,
+    multNominal: fv/aportado,
+    multReal: fv/inflacionAnual/aportado,
+    pierdeInflacion: teaNeta(v) < Math.pow(1+INFLACION_MENSUAL[v.cur],12)-1,
+  };
+}
+
+// ---------- Plan B riesgoso (Monte Carlo Bi-Variable: Subyacente + Devaluación) ----------
+function calcRiesgosoBiVariable(pmt,n,v,sims=5000,semilla=42){
+  const rng = mulberry32(semilla);
+  const aportado = pmt*n;
+  const fvs = new Float64Array(sims);
+  
+  const muUSD_M = v.muUSD/12, sigmaUSD_M = v.sigmaUSD/Math.sqrt(12);
+  const muDev_M = v.muDev/12, sigmaDev_M = v.sigmaDev/Math.sqrt(12);
+
+  for(let s=0; s<sims; s++){
+    let acc = 0;
+    for(let m=0; m<n; m++){
+      let rUSD = muUSD_M + sigmaUSD_M * gaussiana(rng);
+      let rDev = muDev_M + sigmaDev_M * gaussiana(rng);
+      // Retorno combinado en ARS
+      let rARS = (1 + rUSD) * (1 + rDev) - 1;
+      acc = (acc + pmt) * (1 + rARS - v.fees/12);
+    }
+    fvs[s] = netoImpuestos(acc, aportado, v.tax);
+  }
+  fvs.sort((a,b)=>a-b);
+  const pct = p => fvs[Math.floor(sims*p)];
+  let perdidas=0; for(let s=0;s<sims;s++) if(fvs[s]<aportado) perdidas++;
+
+  return { p25:pct(0.25), p50:pct(0.50), p75:pct(0.75), probPerder: perdidas/sims, sims };
+}
+
+function trayectoriasMCBiVariable(pmt,n,v,cant=40){
+  const rng = mulberry32(7);
+  const muUSD_M = v.muUSD/12, sigmaUSD_M = v.sigmaUSD/Math.sqrt(12);
+  const muDev_M = v.muDev/12, sigmaDev_M = v.sigmaDev/Math.sqrt(12);
+  const lineas=[];
+  
+  for(let s=0; s<cant; s++){
+    let acc=0; const pts=[acc];
+    for(let m=0; m<n; m++){
+      let rUSD = muUSD_M + sigmaUSD_M * gaussiana(rng);
+      let rDev = muDev_M + sigmaDev_M * gaussiana(rng);
+      let rARS = (1 + rUSD) * (1 + rDev) - 1;
+      acc = (acc + pmt) * (1 + rARS - v.fees/12);
+      pts.push(acc);
+    }
+    lineas.push(pts);
+  }
+  return lineas;
+}
+
+function calcUnico(pv,n,v){
+  const fv = pv * Math.pow(1+temNeto(v),n);
+  return { dejaDeRendir: fv-pv, fvNeto: netoImpuestos(fv,pv,v.tax) };
+}
+
+// ---------- Orquestador principal ----------
+let ultimaIntencion = null;
+
+function ejecutar(){
+  const item  = document.getElementById("item").value.trim() || "Sin nombre";
+  const tipo  = document.getElementById("tipo").value;
+  const monto = parseFloat(document.getElementById("monto").value);
+  const meses = parseInt(document.getElementById("meses").value);
+  const usos  = parseFloat(document.getElementById("usos").value) || 0;
+  const ingreso = parseFloat(document.getElementById("ingresoMensual").value) || 0;
+
+  if(!(monto>0) || !(meses>0)){ alert("Monto y meses deben ser positivos."); return; }
+
+  ultimaIntencion = { item, tipo, monto, meses, usos, ingreso, fecha: new Date().toISOString() };
+
+  const gA = document.getElementById("zonaGastar");
+  const gS = document.getElementById("zonaSeguro");
+  const gR = document.getElementById("zonaRiesgo");
+
+  // Fase 3a: Opción A (Gastar)
+  let costoUso = usos>0 ? (tipo==="RECURRENTE" ? monto/usos : monto/usos) : null;
+  let htmlA = `<div class="tarjeta gastar"><h3>❌ ${item}</h3>
+    <div class="grande moneda" style="color:var(--rojo)">${fmt(tipo==="RECURRENTE"? monto*meses : monto)}</div>
+    <div class="dim">${tipo==="RECURRENTE" ? `${fmt(monto)} × ${meses} meses.` : `Pago único hoy. Deja de rendir ${meses} meses.`}</div>
+    ${costoUso ? `<div class="dim">Costo por uso previsto: <b class="moneda">${fmt(costoUso)}</b> (${usos} usos)</div>` : ""}
+  </div>`;
+  gA.innerHTML = htmlA;
+
+  // Fase 3b/c: Plan B
+  gS.innerHTML=""; gR.innerHTML="";
+  for(const v of VEHICULOS){
+    if(v.risky){
+      if(tipo==="UNICO") continue;
+      const r = calcRiesgosoBiVariable(monto,meses,v);
+      gR.innerHTML += `<div class="tarjeta riesgo"><h3>${v.nombre}</h3>
+        <div class="dim">Rango estimado a ${meses} meses (Monte Carlo Bi-Variable, ${r.sims.toLocaleString()} escenarios):</div>
+        <div class="grande moneda" style="color:var(--azul)">${fmt(r.p25)} – ${fmt(r.p75)}</div>
+        <div class="dim">Mediana: <b class="moneda">${fmt(r.p50)}</b> · Prob. de perder capital invertido: <b>${(r.probPerder*100).toFixed(0)}%</b></div>
+        <canvas id="mc-${v.id}" width="560" height="180"></canvas>
+      </div>`;
+    } else if(tipo==="UNICO"){
+      const u = calcUnico(monto,meses,v);
+      gS.innerHTML += tarjetaSeguroUnico(v,u,monto);
+    } else {
+      const r = calcSeguro(monto,meses,v);
+      gS.innerHTML += tarjetaSeguro(v,r);
+    }
+  }
+
+  for(const v of VEHICULOS) if(v.risky && tipo!=="UNICO"){
+    const cv = document.getElementById("mc-"+v.id);
+    if(cv) dibujarMC(cv, trayectoriasMCBiVariable(monto,meses,v), monto*meses);
+  }
+
+  document.getElementById("resultados").style.display="block";
+  document.getElementById("resultados").scrollIntoView({behavior:"smooth"});
+}
+
+function tarjetaSeguro(v,r){
+  const badge = !r.elegible
+    ? `<span class="badge no-elegible">Mínimo ${fmt(v.min)} — no elegible</span>`
+    : r.pierdeInflacion
+    ? `<span class="badge pierde">⚠ Rinde menos que la inflación (${v.cur})</span>`
+    : `<span class="badge ok">✔ Protege poder de compra (${v.cur})</span>`;
+  return `<div class="tarjeta seguro"><h3>${v.nombre}</h3>
+    <div class="dim">TEA efectiva neta de comisiones</div>
+    <div class="grande moneda" style="color:var(--verde)">${(r.tea*100).toFixed(1)}%</div>
+    <div class="dim">Valor futuro neto (nominal): <b class="moneda">${fmt(r.fvNominal)}</b></div>
+    <div class="dim">En ${v.cur} de hoy: <b class="moneda">${fmt(r.fvReal)}</b> (${r.multReal.toFixed(2)}× real)</div>
+    <div class="dim">Liquidez T+${v.liq}</div>${badge}</div>`;
+}
+
+function tarjetaSeguroUnico(v,u,monto){
+  const pierde = teaNeta(v) < Math.pow(1+INFLACION_MENSUAL[v.cur],12)-1;
+  return `<div class="tarjeta seguro"><h3>${v.nombre}</h3>
+    <div class="dim">Si pagás ${fmt(monto)} hoy, dejás de ganar:</div>
+    <div class="grande moneda" style="color:var(--rojo)">${fmt(u.dejaDeRendir)}</div>
+    <div class="dim">En ${mesesTxt()} estaría (neto): <b class="moneda">${fmt(u.fvNeto)}</b></div>
+    ${pierde?`<span class="badge pierde">⚠ Rinde menos que la inflación (${v.cur})</span>`:`<span class="badge ok">✔ Protege poder de compra (${v.cur})</span>`}
+  </div>`;
+}
+function mesesTxt(){ return document.getElementById("meses").value + " meses"; }
+
+function dibujarMC(cv,lineas,equilibrio){
+  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  let maxV=equilibrio;
+  for(const l of lineas) maxV=Math.max(maxV,l[l.length-1]);
+  const px=i=>i/(lineas[0].length-1)*(W-8)+4, py=v=>H-6-(v/maxV)*(H-20);
+  ctx.strokeStyle="#5a636e"; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(4,py(equilibrio)); ctx.lineTo(W-4,py(equilibrio)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="#9aa3ad"; ctx.font="10px monospace"; ctx.fillText("gastar",6,py(equilibrio)-3);
+  for(const l of lineas){
+    ctx.strokeStyle="rgba(47,111,178,.25)"; ctx.lineWidth=1;
+    ctx.beginPath(); l.forEach((v,i)=> i?ctx.lineTo(px(i),py(v)):ctx.moveTo(px(i),py(v))); ctx.stroke();
+  }
+}
+
+// ---------- Fase 4 y 5: Registro y Perfilado ----------
+const CLAVE_LS = "fibrx_debo_checks";
+
+function decidir(decision){
+  if(!ultimaIntencion){ alert("Primero corré el chequeo (Fase 1)."); return; }
+  const reg = JSON.parse(localStorage.getItem(CLAVE_LS) || "[]");
+  reg.push({ ...ultimaIntencion, check_id: crypto.randomUUID(), decision, usosReales:null });
+  localStorage.setItem(CLAVE_LS, JSON.stringify(reg));
+  renderRegistro();
+  alert("Decisión registrada: " + decision);
+}
+
+function registrarUsos(id, valor){
+  const reg = JSON.parse(localStorage.getItem(CLAVE_LS) || "[]");
+  const r = reg.find(x=>x.check_id===id); if(!r) return;
+  r.usosReales = parseFloat(valor) || 0;
+  localStorage.setItem(CLAVE_LS, JSON.stringify(reg));
+  renderRegistro();
+}
+
+function borrarRegistro(id){
+  const reg = JSON.parse(localStorage.getItem(CLAVE_LS)||"[]").filter(x=>x.check_id!==id);
+  localStorage.setItem(CLAVE_LS, JSON.stringify(reg));
+  renderRegistro();
+}
+
+function renderRegistro(){
+  const reg = JSON.parse(localStorage.getItem(CLAVE_LS) || "[]");
+  const tbody = document.getElementById("tablaRegistro");
+  const sec = document.getElementById("seccionRegistro");
+  if(reg.length===0){ sec.style.display="none"; return; }
+  sec.style.display="block";
+
+  tbody.innerHTML = reg.map(r=>{
+    const unitario = r.monto;
+    let usosHtml, cpuHtml, veredicto;
+    if(r.usosReales==null){
+      usosHtml = `<input type="number" min="0" step="any" style="width:90px"
+        onchange="registrarUsos('${r.check_id}',this.value)" placeholder="¿usos?">`;
+      cpuHtml = `<span class="dim">—</span>`;
+      veredicto = `<span class="dim">— pendiente —</span>`;
+    } else {
+      const cpu = unitario / r.usosReales;
+      // Umbral dinámico por perfil: Costo por uso <= 0.5% del Ingreso Mensual Neto
+      const umbralPerfil = r.ingreso ? (r.ingreso * 0.005) : 2000;
+      const eficiente = cpu <= umbralPerfil;
+      usosHtml = `<span class="moneda">${r.usosReales}</span>`;
+      cpuHtml = `<span class="moneda">${fmt(cpu)}</span>`;
+      veredicto = eficiente
+        ? `<span class="veredicto-eficiente">✔ Eficiente (&le; ${fmt(umbralPerfil)})</span>`
+        : `<span class="veredicto-caro">✘ Alto (> ${fmt(umbralPerfil)})</span>`;
+    }
+    return `<tr><td>${r.fecha.slice(0,10)}</td><td>${r.item}</td>
+      <td class="moneda">${fmt(r.monto)}${r.tipo==="RECURRENTE"?"/mes":""}</td>
+      <td>${r.decision}</td><td>${usosHtml}</td><td>${cpuHtml}</td>
+      <td>${veredicto}</td>
+      <td><button onclick="borrarRegistro('${r.check_id}')" style="background:none;border:none;color:#e78a8a">✕</button></td></tr>`;
+  }).join("");
+}
+
+// ---------- Carga asíncrona de JSON de tasas de la ingesta ----------
+async function cargarTasasDelJSON(){
+  try {
+    const res = await fetch("tasas_mercado.json");
+    if(!res.ok) throw new Error("No se halló tasas_mercado.json local");
+    const data = await res.json();
+    
+    // Sobrescribir vehículos con datos de la ingesta
+    VEHICULOS = data.vehiculos.map(vExt => {
+      const local = VEHICULOS.find(l => l.id === vExt.id);
+      return { ...local, ...vExt };
+    });
+
+    document.getElementById("origenTasas").textContent = "tasas_mercado.json (Automático)";
+    document.getElementById("fechaTasas").textContent = new Date(data.actualizado_el).toLocaleString("es-AR");
+  } catch(e) {
+    document.getElementById("origenTasas").textContent = "Tasas fallback por defecto";
+    document.getElementById("fechaTasas").textContent = new Date().toLocaleDateString("es-AR");
+  }
+}
+
+cargarTasasDelJSON();
+renderRegistro();
+</script>
+</body>
+</html>
