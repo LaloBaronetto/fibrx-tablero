@@ -1563,9 +1563,9 @@ function renderCatalogoFCI(data){
 }
 function esMonedaARS(valor){
   if(valor===null || valor===undefined) return false;
-  const moneda=String(valor).trim().toUpperCase()
-    .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"")
-    .replace(/\\s+/g," ");
+  const moneda=String(valor).trim().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase().replace(/\s+/g," ");
   return [
     "ARS",
     "PESO ARGENTINO",
@@ -1611,8 +1611,9 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
     if(!Number.isFinite(tna)||tna<=0||tna>5)continue; // El JSON v6 expresa TNA como fracción.
     // ArgentinaDatos informa la moneda como "Peso Argentino", no siempre
     // con el código ISO "ARS". Si no hay una moneda reconocida, se excluye.
-    const monedaInformada=ext.moneda_fondo ?? ext.cur;
-    if(!esMonedaARS(monedaInformada))continue;
+    // La fuente puede informar la denominación textual y el código ISO en campos separados.
+    // Se acepta cualquiera de los dos si identifica explícitamente pesos argentinos.
+    if(!esMonedaARS(ext.moneda_fondo) && !esMonedaARS(ext.cur))continue;
     const local=locales.get(cfg.id)||{};
     actualizados.push({...local,...ext,
       nombre:ext.nombre||ext.nombre_api||local.nombre||cfg.nombre,
