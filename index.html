@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101820">
+<meta name="description" content="Compará una compra con alternativas de ahorro e inversión usando datos observados y supuestos claramente identificados.">
+<title>FIBRX | Antes de gastar, chequeá</title>
+<style>
+/* ============================================================
+   FIBRX — TABLERO "DEBO DE CHEQUEAR" v2
+   Sin dependencias externas: CSS + JS vanilla.
+   ============================================================ */
+:root{
+  --rojo:#d64545;        /* Opción A: gastar */
+  --verde:#2e9e5b;       /* Plan B seguro (gana) */
+  --amarillo:#c9a227;    /* Alertas: pierde vs inflación */
+  --azul:#2f6fb2;        /* Plan B riesgoso */
+  --fondo:#111418;
+  --tarjeta:#1b2027;
+  --texto:#e8eaed;
+  --texto-dim:#9aa3ad;
+  --borde:#2c333d;
+  --monospace:"Courier New",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fondo);color:var(--texto);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;padding:24px;max-width:1180px;margin:0 auto}
+h1{font-size:1.6rem;margin-bottom:4px}
+h2{font-size:1.1rem;margin:28px 0 10px;color:var(--texto-dim);
+   text-transform:uppercase;letter-spacing:.08em}
+.sub{color:var(--texto-dim);margin-bottom:20px}
+.status-bar{background:#232a33;padding:8px 12px;border-radius:6px;font-size:0.8rem;margin-bottom:16px;color:var(--texto-dim);border:1px solid var(--borde)}
+
+/* ---------- FASE 1: Formulario de Intención ---------- */
+.panel{background:var(--tarjeta);border:1px solid var(--borde);
+       border-radius:10px;padding:18px;margin-bottom:14px}
+.campo{margin-bottom:12px}
+label{display:block;font-size:.85rem;color:var(--texto-dim);margin-bottom:4px}
+input,select,button{font:inherit;color:var(--texto);background:#232a33;
+       border:1px solid var(--borde);border-radius:6px;padding:9px 11px;width:100%}
+input:focus,select:focus{outline:2px solid var(--azul)}
+button{cursor:pointer;font-weight:600;border:none}
+button.primario{background:var(--azul);color:#fff}
+button.primario:hover{filter:brightness(1.15)}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.fila{grid-template-columns:1fr}}
+
+/* ---------- FASE 3: Tablero ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tarjeta{background:var(--tarjeta);border:1px solid var(--borde);border-radius:10px;
+         padding:16px;border-top:4px solid var(--borde)}
+.tarjeta.gastar{border-top-color:var(--rojo)}
+.tarjeta.seguro{border-top-color:var(--verde)}
+.tarjeta.riesgo{border-top-color:var(--azul)}
+.tarjeta h3{font-size:1rem;margin-bottom:8px}
+.grande{font-size:1.5rem;font-weight:700}
+.moneda{font-variant-numeric:tabular-nums;font-family:var(--monospace)}
+.dim{color:var(--texto-dim);font-size:.85rem}
+.badge{display:inline-block;font-size:.72rem;font-weight:700;border-radius:20px;
+       padding:3px 10px;margin-top:6px}
+.badge.ok{background:rgba(46,158,91,.15);color:#5fce8b;border:1px solid var(--verde)}
+.badge.pierde{background:rgba(201,162,39,.15);color:#e0c04a;border:1px solid var(--amarillo)}
+.badge.no-elegible{background:rgba(214,69,69,.12);color:#e78a8a;border:1px solid var(--rojo)}
+canvas{width:100%;height:180px;background:#12161b;border-radius:6px;margin-top:8px}
+
+/* ---------- FASE 4 y 5: Decisión y Seguimiento ---------- */
+.botones-decision{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+button.gasto{background:var(--rojo);color:#fff}
+button.invierto{background:var(--verde);color:#fff}
+button.pendiente{background:#4a5560;color:#fff}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--borde);text-align:left}
+th{color:var(--texto-dim);font-weight:600;font-size:.78rem;text-transform:uppercase}
+.veredicto-eficiente{color:#5fce8b;font-weight:700}
+.veredicto-caro{color:#e78a8a;font-weight:700}
+.disclaimer{font-size:.78rem;color:var(--texto-dim);border-top:1px solid var(--borde);
+            margin-top:30px;padding-top:14px}
+
+/* ---------- Panel de datos observados de FCI ---------- */
+.fci-panel{margin:18px 0 24px}
+.fci-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.fci-card{background:#171c22;border:1px solid var(--borde);border-radius:9px;padding:14px}
+.fci-card h3{font-size:.98rem;margin-bottom:5px}
+.fci-card .fci-meta{color:var(--texto-dim);font-size:.78rem;margin-bottom:8px}
+.fci-card .fci-tna{font-size:1.35rem;font-weight:750;color:#72d49a}
+.fci-card .fci-datos{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:10px}
+.fci-card .fci-dato{font-size:.78rem;color:var(--texto-dim);border-top:1px solid var(--borde);padding-top:5px}
+.fci-card .fci-dato b{display:block;color:var(--texto);font-size:.84rem;overflow-wrap:anywhere}
+.fci-card .fci-nota{font-size:.76rem;color:var(--texto-dim);margin-top:9px;overflow-wrap:anywhere}
+.fci-card.no-data{opacity:.78;border-style:dashed}
+.fci-card .badge{margin:4px 0}
+.fci-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fci-table-wrap{overflow-x:auto;margin-top:12px}
+.fci-table-wrap table{min-width:760px}
+.fci-foot{font-size:.76rem;color:var(--texto-dim);margin-top:10px}
+@media(max-width:640px){.fci-card .fci-datos{grid-template-columns:1fr 1fr}}
+
+
+/* ---------- Jerarquía visual, responsive y accesibilidad ---------- */
+:root{--fondo:#101820;--tarjeta:#18232d;--texto:#f2f5f7;--texto-dim:#b3bec8;--borde:#354553;--azul:#367fc4;--verde:#238b60}
+.skip-link{position:absolute;left:-9999px;top:8px;background:#fff;color:#111;padding:10px 14px;z-index:1000;border-radius:6px}
+.skip-link:focus{left:12px}
+.hero{padding:28px 0 22px;border-bottom:1px solid var(--borde);margin-bottom:18px}
+.marca{font-size:.78rem;letter-spacing:.16em;font-weight:800;color:#8fc4f3;margin-bottom:18px}
+.marca span{color:var(--texto-dim);font-weight:600;letter-spacing:.08em;margin-left:10px}
+.hero h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;letter-spacing:-.04em;max-width:760px}
+.hero h1 em{font-style:normal;color:#83bdf0}
+.hero .sub{font-size:1.03rem;max-width:720px;margin:12px 0 18px}
+.hero-pasos{display:flex;gap:9px;flex-wrap:wrap}.hero-pasos span{font-size:.75rem;color:#d5e0e8;border:1px solid var(--borde);border-radius:30px;padding:5px 11px}
+.status-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 15px;border-radius:9px}
+.status-bar strong{color:#eaf3fb}.status-fecha{margin-left:auto}
+.panel{padding:22px;margin-bottom:18px;border-radius:13px}
+.section-intro{margin-bottom:18px}.section-intro h2{margin:5px 0 4px;color:var(--texto);text-transform:none;letter-spacing:-.02em;font-size:1.45rem}
+.eyebrow{font-size:.7rem;letter-spacing:.13em;font-weight:800;color:#83bdf0}
+.campo{min-width:0}.campo input,.campo select{min-height:46px}
+label{font-size:.9rem;color:#d3dce4;font-weight:600}
+input,select{background:#111b24;border-color:#405261}
+input::placeholder{color:#91a0ad}
+button{min-height:46px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #91caff;outline-offset:3px}
+button.primario{width:auto;min-width:min(100%,260px);padding:12px 20px;background:#286da9}
+.resultados{margin:28px 0}.resultados>h2{margin-top:25px;color:#eaf1f6;text-transform:none;letter-spacing:-.01em;font-size:1.15rem}
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.tarjeta,.fci-card{border-radius:12px}.tarjeta{padding:19px}
+.fci-panel{margin:28px 0}.fci-panel>h2{color:var(--texto);text-transform:none;letter-spacing:-.02em;font-size:1.4rem}
+.fci-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.fci-card{padding:17px;background:#17232d}.fci-card .fci-tna{color:#83d9aa}
+.fci-card .fci-dato{font-size:.8rem}.fci-card .fci-dato b{font-size:.9rem}
+.botones-decision{grid-template-columns:repeat(3,minmax(0,1fr))}.botones-decision button{min-height:52px}
+.table-wrap{overflow-x:auto;max-width:100%}table{min-width:760px}
+.disclaimer{line-height:1.7;font-size:.82rem}
+@media(max-width:700px){body{padding:16px}.hero{padding-top:14px}.hero-pasos{gap:6px}.hero-pasos span{font-size:.68rem}.panel{padding:16px}.status-fecha{margin-left:0;width:100%}.botones-decision{grid-template-columns:1fr}.botones-decision button{width:100%}.fci-card .fci-datos{grid-template-columns:1fr 1fr}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* FIBRX v3 — navegación y ruta educativa integrada */
+.nav-modos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+@media(max-width:720px){.nav-modos{grid-template-columns:1fr}}
+.btn-modo{background:var(--tarjeta);color:var(--texto);border:1px solid var(--borde);border-radius:8px;padding:11px 14px;font-weight:700;cursor:pointer;text-align:left}
+.btn-modo small{display:block;font-weight:400;color:var(--texto-dim);font-size:.78rem;margin-top:2px}
+.btn-modo.activo{border-color:var(--azul);background:#1b2838;box-shadow:0 0 0 1px var(--azul)}
+.fila-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:720px){.fila-3{grid-template-columns:1fr}}
+.etapas-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0 16px}
+@media(max-width:860px){.etapas-nav{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.etapas-nav{grid-template-columns:1fr}}
+.etapa-tab{background:var(--tarjeta-alt);border:1px solid var(--borde);border-radius:8px;padding:10px;cursor:pointer;text-align:left;color:var(--texto)}
+.etapa-tab .num{font-size:.72rem;text-transform:uppercase;color:var(--texto-dim);font-weight:700}
+.etapa-tab .tit{font-size:.86rem;font-weight:700;margin-top:2px}
+.etapa-tab.activa{border-color:var(--verde);background:#182b23}
+.etapa-tab.completada .num::after{content:" · ✓";color:#5fce8b}
+.cita-bloque{background:#141920;border-left:4px solid var(--amarillo);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+.cita-bloque p{font-style:italic;margin-bottom:4px}
+.cita-bloque span{font-size:.8rem;color:var(--texto-dim)}
+.historia-caja{background:#151c26;border:1px solid #2b3a4e;border-radius:8px;padding:14px;margin:12px 0}
+.historia-caja .etiqueta{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:#8ec0f7;font-weight:700;margin-bottom:6px}
+.concepto-lista{margin:8px 0 14px 18px}
+.concepto-lista li{margin-bottom:6px;font-size:.93rem}
+.herramienta-box{background:var(--tarjeta-alt);border:1px solid var(--borde);border-radius:8px;padding:14px;margin-top:14px}
+.barra-progreso{height:8px;background:#232a33;border-radius:99px;overflow:hidden;margin:8px 0 14px}
+.barra-progreso>div{height:100%;background:var(--verde);transition:width .25s ease}
+.acciones-etapa{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.acciones-etapa button{width:auto}
+.pill-filtro{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.pill-filtro button{width:auto;padding:6px 12px;font-size:.82rem}
+#seccionEtapas h4{font-size:.94rem;margin:14px 0 6px;color:#cfd6de}
+@media(max-width:560px){.acciones-etapa button{width:100%}.botones-decision{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+<header class="hero">
+  <div class="marca">FIBRX <span>DECISIONES CON MÁS INFORMACIÓN</span></div>
+  <h1>Antes de gastar, <em>chequeá.</em></h1>
+  <p class="sub">Compará el costo de una compra con alternativas de ahorro e inversión. Mirá los supuestos, evaluá los escenarios y decidí con más claridad.</p>
+  <div class="hero-pasos" aria-label="Etapas del simulador"><span>01 · Evaluar</span><span>02 · Comparar</span><span>03 · Decidir</span><span>04 · Seguir</span></div>
+</header>
+<main id="contenido">
+<div class="status-bar" id="statusBar" role="status" aria-live="polite">
+  <strong>Fuente de datos</strong><span id="origenTasas">Cargando benchmark...</span><span class="status-fecha">Última observación: <time id="fechaTasas">No disponible</time></span>
+</div>
+
+<div class="nav-modos" role="group" aria-label="Modos de navegación">
+
+<button type="button" aria-pressed="true" class="btn-modo activo" id="btnModoTodo" onclick="cambiarModo('TODO')">
+
+📚 Experiencia completa
+
+<small>Etapas educativas + Simulador completo</small>
+
+</button>
+
+<button type="button" aria-pressed="false" class="btn-modo" id="btnModoEtapas" onclick="cambiarModo('ETAPAS')">
+
+🧭 Solo Etapas (Cap. 1 a 5)
+
+<small>Lectura guiada, historia de Alberto y plantillas</small>
+
+</button>
+
+<button type="button" aria-pressed="false" class="btn-modo" id="btnModoSimulador" onclick="cambiarModo('SIMULADOR')">
+
+🧮 Solo Simulador y FCI
+
+<small>Chequeo de gasto, Monte Carlo y seguimiento</small>
+
+</button>
+
+</div>
+
+
+
+<!-- ============ RECORRIDO EDUCATIVO POR ETAPAS (EBOOK) ============ -->
+
+<section class="panel" id="seccionEtapas" aria-labelledby="tituloEtapas">
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+
+<div>
+
+<h2 id="tituloEtapas" style="margin:0">Recorrido por Etapas — "Invertir Cuesta Arriba"</h2>
+
+<p class="dim" style="margin:4px 0 0">Cinco etapas para pasar del modo automático y la "armadura" de Alberto hacia decisiones conscientes de cuerpo, mente y finanzas.</p>
+<p class="dim" style="margin-top:8px">Nota editorial: se conserva el contenido del material aportado. Las citas, cifras y reglas mencionadas (por ejemplo, umbrales de inflación, porcentajes de cartera o dividendos) no se presentan como datos vigentes ni como reglas universales; requieren verificación antes de su publicación técnica.</p>
+
+</div>
+
+<span class="badge info" id="textoProgresoEtapas">Progreso: 0 / 5 etapas leídas</span>
+
+</div>
+
+
+
+<div class="barra-progreso" aria-hidden="true">
+
+<div id="barraProgresoFill" style="width:0%"></div>
+
+</div>
+
+
+
+<div class="etapas-nav" id="navEtapas"></div>
+
+
+
+<div id="contenedorEtapaActiva"></div>
+
+
+
+<!-- Herramientas Prácticas Vinculadas a las Etapas -->
+
+<div class="herramienta-box" id="herramientasEtapas">
+
+<h3 style="margin-bottom:4px">🛠️ Herramientas Prácticas de las Etapas</h3>
+
+<p class="dim">Completá estos cuadros orientativos con tus propios datos. Los importes precargados son ejemplos y las herramientas se guardan localmente en tu navegador.</p>
+
+
+
+<div class="pill-filtro" role="tablist" aria-label="Herramientas prácticas">
+
+<button class="primario" id="tabToolPMV" onclick="mostrarHerramienta('PMV')">💸 Presupuesto Mínimo Vital (Etapa 3)</button>
+
+<button class="secundario" id="tabToolDeudas" onclick="mostrarHerramienta('DEUDAS')">🔁 Organizador de Deudas (Etapa 3)</button>
+
+<button class="secundario" id="tabToolMov" onclick="mostrarHerramienta('MOV')">🏃‍♂️ Plan de Movimiento (Etapa 5)</button>
+
+<button class="secundario" id="tabToolGlosario" onclick="mostrarHerramienta('GLOSARIO')">📖 Glosario Clave (Etapas 1–5)</button>
+
+</div>
+
+
+
+<!-- Herramienta 1: Presupuesto Mínimo Vital -->
+
+<div id="toolPMV">
+
+<p class="dim">Definí cuánto necesitás por mes para vivir con dignidad (no solo sobrevivir). Todo lo que esté por encima se planifica; lo que esté por debajo se revisa.</p>
+
+<div class="fila-3">
+
+<div class="campo"><label>Alimentación esencial (ARS)</label><input type="number" min="0" step="any" id="pmvAlim" value="250000" oninput="calcPMV()"></div>
+
+<div class="campo"><label>Transporte básico (ARS)</label><input type="number" min="0" step="any" id="pmvTrans" value="70000" oninput="calcPMV()"></div>
+
+<div class="campo"><label>Servicios y conectividad (ARS)</label><input type="number" min="0" step="any" id="pmvServ" value="90000" oninput="calcPMV()"></div>
+
+<div class="campo"><label>Salud y bienestar (ARS)</label><input type="number" min="0" step="any" id="pmvSalud" value="60000" oninput="calcPMV()"></div>
+
+<div class="campo"><label>Educación o formación (ARS)</label><input type="number" min="0" step="any" id="pmvEdu" value="40000" oninput="calcPMV()"></div>
+
+<div class="campo"><label>Tiempo libre / ocio sano (ARS)</label><input type="number" min="0" step="any" id="pmvLibre" value="50000" oninput="calcPMV()"></div>
+
+</div>
+
+<div class="status-bar" id="resumenPMV" style="margin-bottom:0">
+
+Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b> / mes
+
+</div>
+
+</div>
+
+
+
+<!-- Herramienta 2: Organizador de Deudas -->
+
+<div id="toolDeudas" style="display:none">
+
+<p class="dim">Anotá tus deudas sin vergüenza para ordenarlas por tasa/urgencia. Regla base: no tomar nueva deuda para tapar deudas.</p>
+
+<div class="fila-3">
+
+<div class="campo"><label>Acreedor / Concepto</label><input type="text" id="deudaNombre" placeholder="Ej: Tarjeta / Préstamo"></div>
+
+<div class="campo"><label>Monto pendiente (ARS)</label><input type="number" min="0" step="any" id="deudaMonto" placeholder="Ej: 180000"></div>
+
+<div class="campo"><label>Tasa / Prioridad (ej. Alta - 85% TNA)</label><input type="text" id="deudaPrioridad" placeholder="Ej: Alta prioridad"></div>
+
+</div>
+
+<button class="secundario" style="width:auto;margin-bottom:10px" onclick="agregarDeuda()">+ Agregar deuda a mi lista</button>
+
+<div class="table-wrap">
+
+<table>
+
+<thead><tr><th>Concepto</th><th>Monto</th><th>Prioridad / Tasa</th><th></th></tr></thead>
+
+<tbody id="cuerpoDeudas"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+
+<!-- Herramienta 3: Plan de Movimiento -->
+
+<div id="toolMov" style="display:none">
+
+<p class="dim">Caminar 20 min, estirar, respirar profundo 5 min o moverte con intención. El cuerpo también sube cuestas.</p>
+
+<div class="fila">
+
+<div class="campo"><label>Hábito / Rutina elegida (sin excusas)</label><input type="text" id="movHabito" value="20 min de caminata diaria + 5 min de respiración consciente"></div>
+
+<div class="campo"><label>Frecuencia semanal objetivo</label><input type="text" id="movFreq" value="5 días a la semana (10 min base en casa si llueve)"></div>
+
+</div>
+
+<div class="campo"><label>Recordatorio para tu cuerpo y tu propósito</label><input type="text" id="movNota" value="Moverme es decirme que sigo vivo y que mi cuerpo importa antes que la prisa."></div>
+
+<button class="secundario" style="width:auto" onclick="guardarPlanMov()">Guardar plan de movimiento</button>
+
+<span class="dim" id="estadoPlanMov" style="margin-left:10px"></span>
+
+</div>
+
+
+
+<!-- Herramienta 4: Glosario -->
+
+<div id="toolGlosario" style="display:none">
+
+<div class="campo">
+
+<label>Buscar concepto del eBook o de finanzas</label>
+
+<input type="text" id="filtroGlosario" placeholder="Ej: REITs, TIPS, P/E, BPA, NAV, Warrants, Alberto, Sam..." oninput="renderGlosario()">
+
+</div>
+
+<div id="listaGlosario"></div>
+
+</div>
+
+</div>
+
+</section>
+
+<div id="seccionSimulador">
+<!-- ============ FASE 1: INTENCIÓN DE COMPRA ============ -->
+<section class="panel formulario" aria-labelledby="tituloChequeo" id="formularioIntencion">
+  <div class="section-intro"><span class="eyebrow">PASO 1 · TU DECISIÓN</span><h2 id="tituloChequeo">¿Qué estás por comprar?</h2><p class="dim">Completá los datos para comparar el costo de la compra con escenarios alternativos.</p></div>
+  <div class="campo">
+    <label for="item">¿Qué querés comprar o pagar?</label>
+    <input id="item" type="text" placeholder="Ej: zapatillas, plan de ahorro, cambio de celular" value="Zapatillas">
+  </div>
+  <div class="fila">
+    <div class="campo">
+      <label for="tipo">Tipo de gasto</label>
+      <select id="tipo">
+        <option value="UNICO">Único (pago todo hoy)</option>
+        <option value="RECURRENTE" selected>Recurrente / cuotas (por mes)</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="monto">Monto ($ por mes si es recurrente; total si es único)</label>
+      <input id="monto" type="number" min="1" step="any" value="80000">
+    </div>
+    <div class="campo">
+      <label for="meses">Horizonte / cantidad de cuotas (meses)</label>
+      <input id="meses" type="number" min="1" max="360" value="36">
+    </div>
+    <div class="campo">
+      <label for="usos">Usos esperados (para cálculo de costo por uso)</label>
+      <input id="usos" type="number" min="0" step="any" value="60" placeholder="¿Cuántas veces lo vas a usar?">
+    </div>
+  </div>
+  <div class="campo">
+    <label for="ingresoMensual">Ingreso mensual neto ($ ARS) — referencia orientativa</label>
+    <input id="ingresoMensual" type="number" min="1" step="any" value="1500000" placeholder="Ej: 1500000">
+  </div>
+  <button class="primario" type="button" onclick="ejecutar()">Comparar mi decisión <span aria-hidden="true">→</span></button>
+</section>
+
+<!-- ============ FASE 3: RESULTADOS ============ -->
+<section id="resultados" class="resultados" style="display:none" aria-live="polite" aria-labelledby="tituloResultados">
+  <div class="section-intro"><span class="eyebrow">PASO 2 · COMPARACIÓN</span><h2 id="tituloResultados">Tus escenarios</h2><p class="dim">Los importes son estimaciones bajo los supuestos indicados; no representan rendimientos garantizados. En Plan B se comparan las clases FCI disponibles individualmente, sin mezclar clases ni reemplazar datos faltantes.</p></div>
+  <h2>Opción A · Realizar la compra</h2>
+  <div class="grid" id="zonaGastar"></div>
+
+  <h2>Plan B · Comparación de FCI en pesos (escenario estimado, no garantizado)</h2>
+  <p class="dim" id="estadoComparacionFci">Esperando la carga y validación de las seis clases del catálogo.</p>
+  <div class="grid" id="zonaSeguro"></div>
+
+  <h2>Escenario de riesgo · CEDEAR SPY (ilustrativo)</h2>
+  <div class="grid" id="zonaRiesgo"></div>
+
+  <!-- ============ FASE 4: DECISIÓN ============ -->
+  <section class="panel">
+    <h2 style="margin-top:0">Tu decisión</h2>
+    <p class="dim">Registrar la decisión habilita el seguimiento (Fase 5). Nada se envía a ningún servidor: queda en tu navegador.</p>
+    <div class="botones-decision">
+      <button class="gasto" type="button" onclick="decidir('GASTADO')">❌ Lo gasté igual</button>
+      <button class="invierto" type="button" onclick="decidir('INVERTIDO_PLAN_B')">✅ No gasté: lo invertí</button>
+      <button class="pendiente" type="button" onclick="decidir('PENDIENTE')">⏸️ Todavía no sé</button>
+    </div>
+  </section>
+</section>
+
+<!-- ============ MERCADO: FCI OBSERVADOS ============ -->
+<section class="panel fci-panel" aria-labelledby="tituloFci">
+  <h2 id="tituloFci" style="margin-top:0">Fondos comunes de inversión — datos observados</h2>
+  <p class="dim">Información publicada por ArgentinaDatos para cada clase individual. Los datos de esta sección son descriptivos; solo se usan en los cálculos cuando la TNA está disponible y validada. Cada FCI tiene riesgos, condiciones y plazos propios; no es un depósito garantizado.</p>
+  <div id="estadoCatalogoFci" class="status-bar" style="margin-top:10px">Cargando catálogo de FCI...</div>
+  <p class="dim" style="margin:8px 0 12px">El catálogo se actualiza automáticamente desde la fuente pública del proyecto. No necesitás seleccionar ni cargar archivos.</p>
+  <div id="catalogoFci" class="fci-grid" aria-live="polite"></div>
+  <p class="fci-foot">La TNA estimada y los rendimientos históricos no garantizan resultados futuros. Los honorarios informados se muestran como dato del fondo y no se descuentan nuevamente en el simulador para evitar una posible doble contabilización de gastos ya reflejados en el valor de cuotaparte.</p>
+</section>
+
+
+<!-- ============ FASE 5: REGISTRO Y SEGUIMIENTO ============ -->
+<section class="panel" id="seccionRegistro" style="display:none">
+  <h2 style="margin-top:0">Registro "Debo de chequear" + seguimiento</h2>
+  <p class="dim">Pasados unos meses: ¿lo compraste? ¿Cuántas veces lo usaste? El costo por uso real corrige la predicción.</p>
+  <div class="table-wrap" role="region" aria-label="Registro de decisiones; desplazamiento horizontal disponible">
+  <table>
+    <thead><tr><th>Fecha</th><th>Ítem</th><th>Monto</th><th>Decisión</th><th>Usos reales</th><th>Costo por uso</th><th>Veredicto (Perfilado)</th><th></th></tr></thead>
+    <tbody id="tablaRegistro"></tbody>
+  </table>
+  </div>
+</section>
+
+</div>
+
+<p class="disclaimer">
+⚠️ Aviso educativo: esta página es un simulador con fines educativos, no es asesoramiento financiero personalizado.
+    La inflación mensual y los parámetros de riesgo son supuestos configurados; no se actualizan automáticamente con las tasas. Los aportes mensuales se modelan como importes nominales fijos al final de cada mes; el valor real expresa el saldo final en poder adquisitivo del inicio del horizonte. El Monte Carlo usa shocks independientes para el subyacente y el tipo de cambio, sin modelar correlación. Los cálculos base no descuentan impuestos ni presuponen una alícuota fiscal universal: el tratamiento depende del instrumento y de la situación de cada inversor.
+    Para los FCI, la TNA observada se convierte a una tasa mensual aproximada (TNA/12); no se vuelve a descontar honorarios para evitar duplicarlos si el rendimiento derivado del valor de cuotaparte ya los refleja.
+    Los rendimientos pasados no garantizan resultados futuros. Verificá siempre las condiciones, la clase y la tasa vigente en la app o documentación del administrador antes de operar.
+</p>
+</main>
+
+<script>
+
+/* ============================================================
+
+MÓDULO EDUCATIVO POR ETAPAS — "INVERTIR CUESTA ARRIBA"
+
+No altera la lógica de cálculo ni el registro del simulador.
+
+============================================================ */
+
+const ETAPAS_EBOOK = [
+
+{
+
+id: 1,
+
+titulo: "El Sistema Nos Quiere Distraídos",
+
+subtitulo: "Tiempo de vida, la armadura de Alberto e Inversión en Tiempos de Crisis",
+
+cita: {
+
+texto: "Cuando tú compras algo, no lo compras con dinero, lo compras con el tiempo de vida que tuviste que gastar para tener ese dinero. Pero la única cosa que no se puede comprar es la vida, la vida se gasta. Y es miserable gastar la vida para perder la libertad.",
+
+autor: "José 'Pepe' Mujica"
+
+},
+
+historia: "Alberto era un tipo común, responsable y trabajador que creía que su valor estaba en cumplir horarios, sumar turnos y cubrir cuentas. Su 'armadura' era invisible: la rutina ciega, el cansancio constante, el consumismo y la ignorancia financiera. Julieta y Cristóbal veían poco a Alberto sin ese velo de prisa. Cuando Julieta le exigió sacarse la armadura para ver quién era de verdad, Alberto descubrió que el miedo a parar y a la incertidumbre lo mantenía atascado.",
+
+pilaresVitales: [
+
+"Nutrición secuestrada por el marketing: nos venden ultraprocesados y nos hacen creer que comer sano es caro o lento; comer bien es posible incluso con poco dinero, pero nadie lo enseña.",
+
+"El cuerpo como primer territorio: moverse es vital (caminar, estirar, respirar), no un lujo estético.",
+
+"El vacío de educación financiera: vivimos endeudados sin aprender presupuestos, interés compuesto ni cómo evitar el sobreendeudamiento. Invertir cuesta arriba empieza por despertar y tener propósito."
+
+],
+
+conceptosFinancieros: [
+
+"Inversión vs. Especulación: invertir busca construir valor y rendimiento a largo plazo con criterio defensivo; especular busca ganancias rápidas por movimientos de precio y suele operar siguiendo la tendencia (comprando en subas y vendiendo en bajas).",
+
+"Psicología en crisis y lección de 2008: la euforia provoca sobrecompra y el pánico provoca ventas apresuradas. En 2008, quienes compraron acciones de bancos golpeados que lograron recuperarse obtuvieron grandes retornos, pero quienes no evaluaron bien arriesgaron pérdidas permanentes ('el que no ve el pasado tiende a tropezar en el mismo pozo').",
+
+"Diversificación del portafolio: repartir entre distintos activos mitiga el riesgo (no lo elimina por completo). Regla prudente de referencia: no exceder el 75% en acciones ordinarias, no endeudarse para mantener valores y reducir hasta el 50% en renta variable cuando el contexto lo exija.",
+
+"Inflación, REITs y TIPS: la inflación erosiona los ingresos fijos; históricamente una inflación alta (especialmente por encima del 6%) presiona a la baja las acciones, mientras que una inflación moderada permite a algunas empresas trasladar costos. Los REITs (fondos inmobiliarios, con rendimiento por dividendo ilustrativo cercano al 3,5%) y los TIPS (bonos protegidos contra inflación) ayudan a diversificar y defender poder adquisitivo."
+
+],
+
+ejemploSimulador: { item: "Compra impulsiva en cuotas", tipo: "RECURRENTE", monto: 65000, meses: 24, usos: 48 }
+
+},
+
+{
+
+id: 2,
+
+titulo: "Mi Cuesta Arriba",
+
+subtitulo: "Cambiar desde adentro, el bosque de Merlín, Bonos y Promedio del Costo",
+
+cita: {
+
+texto: "No fue un gran evento. Fue una suma de pequeñas incomodidades, de silencios, de preguntas que no podía seguir ignorando.",
+
+autor: "Capítulo 2 — Invertir Cuesta Arriba"
+
+},
+
+historia: "Tras un paseo en bicicleta con su hijo en una cuesta difícil —donde mirar el paisaje cambió el ánimo de ambos—, el narrador decidió invertir primero en su cuerpo, luego en su alimentación y finalmente en sus finanzas. En paralelo, Alberto buscó ayuda fuera de las soluciones rápidas: el herrero no pudo abrir su armadura, Bolsalegre le señaló que todos cargamos alguna armadura y lo orientó hacia el bosque de Merlín. Allí, sin saber distinguir qué comer ni orientarse, Alberto comprendió que cuando el alumno está listo, el conocimiento aparece.",
+
+pilaresVitales: [
+
+"La verdadera prosperidad no es acumular sin sentido, sino vivir mejor con energía, claridad y propósito.",
+
+"Dejar las 'soluciones rápidas' (como endeudarse más para tapar huecos) y aceptar el proceso gradual de aprender."
+
+],
+
+conceptosFinancieros: [
+
+"Obligaciones, bonos municipales y bonos de ahorro: los bonos/obligaciones son instrumentos de deuda con pagos de interés y devolución del principal. Los bonos de ahorro son una alternativa de largo plazo orientadas a ahorristas conservadores; los títulos municipales suelen gozar de beneficios o exenciones fiscales según la jurisdicción y el perfil del inversor, por lo que siempre debe compararse su rendimiento neto.",
+
+"Promedio del Costo (Dollar-Cost Averaging): aportar un monto fijo de forma periódica sin intentar adivinar el piso o el techo del mercado. Con precios altos se compran menos unidades y con precios bajos se compran más, reduciendo el impacto emocional y el costo promedio.",
+
+"Caso práctico de aporte fijo: si alguien invierte $500 mensuales durante 5 meses a precios de $50, $25, $40, $20 y $35, acumula 81,8 unidades por $2.500 (costo promedio de ~$30,56 por unidad, por debajo del promedio simple de $34)."
+
+],
+
+ejemploSimulador: { item: "Aporte mensual disciplinado", tipo: "RECURRENTE", monto: 50000, meses: 36, usos: 1 }
+
+},
+
+{
+
+id: 3,
+
+titulo: "Finanzas para Sobrevivir y Crecer",
+
+subtitulo: "Las lágrimas que oxidan la visera, Presupuesto Mínimo Vital y Políticas de Cartera",
+
+cita: {
+
+texto: "Trata de no convertirte en un hombre de éxito, sino trata de convertirte en un hombre de valor.",
+
+autor: "Albert Einstein"
+
+},
+
+historia: "Al recibir una carta en blanco de Cristóbal —señal de que su hijo apenas lo conocía—, Alberto derramó lágrimas genuinas que empezaron a oxidar y abrir parte de su visera. Ver la realidad sin autoengaño duele, pero libera. Ese mismo quiebre es el que ocurre cuando mirás tus números de frente y dejás de vivir en negación.",
+
+pilaresVitales: [
+
+"Presupuesto Mínimo Vital (PMV): calcular lo básico para vivir con dignidad (alimentación esencial, transporte básico, servicios/conectividad, salud/bienestar, formación y tiempo libre).",
+
+"Salir del ciclo de deuda: listar montos, tasas y plazos, priorizar por impacto/urgencia, negociar y nunca tomar más deuda para pagar deudas.",
+
+"Planificar aunque duela: revisar gastos cada semana y celebrar cada avance real (un mes sin nueva deuda, una cuota saldada, un ahorro inicial)."
+
+],
+
+conceptosFinancieros: [
+
+"Políticas del inversor emprendedor: diversificar internacionalmente (por ejemplo, destinando hasta un tercio a acciones externas para reducir riesgo país), mantener bonos de calidad de corto vencimiento para estabilidad, aceptar las fluctuaciones normales del mercado y automatizar aportes.",
+
+"Especular con límite y comprar por debajo del valor intrínseco: separar solo un margen pequeño para especulación y destinar el grueso al largo plazo. Evaluar el valor real antes de comprar (por ejemplo, una empresa sólida golpeada temporalmente por un factor ajeno a su negocio de fondo vs. un activo inflado por moda sin fundamentos).",
+
+"Fondos abiertos vs. cerrados y asesores: los fondos abiertos operan cerca de su NAV (Valor Neto del Activo); los cerrados emiten un número fijo de acciones y pueden cotizar con prima o descuento respecto al NAV, lo que exige vigilar comisiones, historial y riesgos. Al elegir un asesor financiero, exigí transparencia de tarifas, entendé qué recomienda y mantené tu criterio."
+
+],
+
+ejemploSimulador: { item: "Suscripción o cuota mensual", tipo: "RECURRENTE", monto: 45000, meses: 12, usos: 12 }
+
+},
+
+{
+
+id: 4,
+
+titulo: "Nutrición sin Marketing",
+
+subtitulo: "El Castillo del Silencio, escuchar a Sam y Análisis Fundamental de Valores",
+
+cita: {
+
+texto: "Uno debe estar solo para poder dejar caer su armadura.",
+
+autor: "El Rey — Castillo del Silencio"
+
+},
+
+historia: "En el Castillo del Silencio, Alberto comprendió que hablar sin parar o mantener barreras le impedía escuchar de verdad. Al quedarse en silencio y sentir el dolor propio y el de Julieta, sus lágrimas oxidaron el yelmo y escuchó a 'Sam', su yo más auténtico, que llevaba años esperando que bajara el ruido.",
+
+pilaresVitales: [
+
+"Nutrición sin marketing: verduras de estación, legumbres, huevos, arroz, avena y comida real por encima de paquetes ultraprocesados o promesas 'light' engañosas.",
+
+"Planificar comidas y compras evita desperdicio y demuestra que comer bien no exige lujos."
+
+],
+
+conceptosFinancieros: [
+
+"Fortaleza financiera y cobertura de pagos: analizar si los beneficios y el flujo de caja de una empresa cubren holgadamente intereses y dividendos, además de observar la deuda frente al capital y el flujo de efectivo real.",
+
+"Dividendos y BPA (Beneficios por Acción): los dividendos reflejan reparto de utilidades y constancia; el BPA indica la ganancia por acción en circulación (histórico y proyecciones). Siempre contrastá con el flujo de caja operativo.",
+
+"Trampas para incautos y ratios (como P/E): una suba de BPA por la venta extraordinaria de un activo puede ocultar un negocio débil. Compará ratios como Precio/Ganancia (P/E), crecimiento y dividendos considerando el sector y el ciclo económico, sin dejarte llevar por el efecto manada."
+
+],
+
+ejemploSimulador: { item: "Delivery / ultraprocesados mensuales", tipo: "RECURRENTE", monto: 120000, meses: 12, usos: 20 }
+
+},
+
+{
+
+id: 5,
+
+titulo: "Movimiento como Resistencia",
+
+subtitulo: "El Castillo del Conocimiento, la ambición del corazón, Preferentes, Convertibles y Warrants",
+
+cita: {
+
+texto: "La ambición del corazón es pura. No compite con nadie y no hace daño a nadie. De hecho, le sirve a uno de tal manera que sirve a otros al mismo tiempo.",
+
+autor: "Merlín — Castillo del Conocimiento"
+
+},
+
+historia: "Con el yelmo ya caído, Alberto avanzó hacia el Castillo del Conocimiento. Entendió que muchas veces había confundido 'necesitar' a los demás (para validar su ego) con 'amar', y vio en el espejo su potencial real. Frente al manzano, distinguió la ambición ansiosa de competir de la 'ambición del corazón' que crece dando frutos. Al volver al sendero, la armadura de brazos y piernas había cedido: moverse se volvió liviano.",
+
+pilaresVitales: [
+
+"Ejercicios sin excusas: 20 minutos de caminata, estiramientos al despertar/dormir, 5 minutos de respiración consciente y movimiento cotidiano.",
+
+"El cuerpo es tu primer hogar: moverte es resistencia frente al estrés y la parálisis."
+
+],
+
+conceptosFinancieros: [
+
+"Valores preferentes: acciones con prioridad en dividendos y liquidación frente a las ordinarias, habitualmente con dividendo fijo y sin derecho a voto; útiles para buscar ingresos regulares, pero sujetas a riesgo de crédito si la empresa atraviesa tensiones.",
+
+"Selección con análisis y gestión de riesgos: al buscar empresas con potencial de crecimiento, evaluá ingresos, márgenes, competencia y contexto del sector, anticipando volatilidad y posibles desvíos respecto a lo esperado.",
+
+"Valores convertibles y warrants: los convertibles permiten canjear deuda por acciones ordinarias a un precio fijado; los warrants otorgan el derecho (no la obligación) de comprar acciones a un precio estipulado durante un plazo. Pueden potenciar retornos, pero conllevan mayor riesgo y exigen análisis riguroso del emisor y del mercado."
+
+],
+
+ejemploSimulador: { item: "Zapatillas / equipo deportivo", tipo: "UNICO", monto: 140000, meses: 12, usos: 180 }
+
+}
+
+];
+
+
+
+const GLOSARIO_ITEMS = [
+
+{ term: "Tiempo de vida (Pepe Mujica)", etapa: "Etapa 1", def: "El dinero representa tiempo de vida intercambiado; malgastarlo en compras compulsivas o deudas reduce tu libertad real." },
+
+{ term: "Inversión defensiva", etapa: "Etapa 1", def: "Enfoque que prioriza preservar capital, controlar riesgos y evitar decisiones emocionales antes que perseguir apuestas rápidas." },
+
+{ term: "Inflación y umbral > 6%", etapa: "Etapa 1", def: "Pérdida de poder adquisitivo. Cuando la inflación es elevada (como en escenarios por encima del 6%), suele presionar negativamente a las acciones y licuar ingresos fijos." },
+
+{ term: "REITs", etapa: "Etapa 1", def: "Fondos de inversión inmobiliaria que permiten participar en rentas de bienes raíces sin comprar un inmueble físico; referencia ilustrativa de dividendo ~3,5%." },
+
+{ term: "TIPS", etapa: "Etapa 1", def: "Títulos del Tesoro protegidos contra la inflación que ajustan su capital para resguardar el poder adquisitivo." },
+
+{ term: "Promedio del Costo (DCA)", etapa: "Etapa 2", def: "Invertir un monto fijo de forma periódica para promediar precios de compra y reducir el peso de las emociones." },
+
+{ term: "Bonos municipales y de ahorro", etapa: "Etapa 2", def: "Instrumentos de deuda: los de ahorro apuntan al largo plazo conservador; los municipales pueden ofrecer ventajas fiscales según normativa y perfil." },
+
+{ term: "Presupuesto Mínimo Vital (PMV)", etapa: "Etapa 3", def: "Piso mensual necesario para cubrir necesidades esenciales y una vida digna antes de planificar excedentes." },
+
+{ term: "Valor intrínseco y margen de seguridad", etapa: "Etapa 3", def: "Estimación del valor real de un activo por sus fundamentos; comprar por debajo de ese valor ayuda a protegerse de errores." },
+
+{ term: "NAV / Fondos abiertos y cerrados", etapa: "Etapa 3", def: "NAV es el valor neto por cuotaparte/acción del fondo. Los fondos abiertos transan cerca del NAV; los cerrados cotizan en mercado secundario con prima o descuento." },
+
+{ term: "BPA (Beneficios por Acción) y P/E", etapa: "Etapa 4", def: "El BPA mide la ganancia por acción; la relación P/E (Precio/Ganancia) compara cuánto se paga por unidad de ganancia." },
+
+{ term: "Cobertura de pagos y flujo de caja", etapa: "Etapa 4", def: "Evalúa si los ingresos y el efectivo real de una empresa cubren holgadamente deudas, intereses y dividendos." },
+
+{ term: "Valores preferentes", etapa: "Etapa 5", def: "Acciones con preferencia en cobro de dividendos y prelación en liquidación, usualmente sin voto y con riesgo de crédito." },
+
+{ term: "Valores convertibles y warrants", etapa: "Etapa 5", def: "Instrumentos híbridos o derechos de compra a precio pactado que ofrecen potencial de suba con mayor riesgo y exigencia de análisis." },
+
+{ term: "Ambición del corazón (Sam / Merlín)", etapa: "Etapa 5", def: "Buscar crecer y aportar valor genuino sin competir destructivamente ni descuidar la propia salud y familia." }
+
+];
+
+
+
+// Fallback: crypto.randomUUID requiere contexto seguro (https/localhost). En
+
+// file:// o navegadores viejos puede no existir y romper decidir()/agregarDeuda().
+
+const uuid = () => (window.crypto && crypto.randomUUID)
+
+? crypto.randomUUID()
+
+: "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+
+
+
+let etapaActualId = 1;
+
+const CLAVE_ETAPAS = "fibrx_ebook_etapas_leidas";
+
+const CLAVE_DEUDAS = "fibrx_ebook_deudas";
+
+const CLAVE_MOV = "fibrx_ebook_movimiento";
+
+
+
+function getEtapasLeidas(){
+
+try { const v=JSON.parse(localStorage.getItem(CLAVE_ETAPAS)||"[]"); return Array.isArray(v)?v:[]; } catch { return []; }
+
+}
+
+
+
+function marcarEtapaLeida(id){
+
+const set = new Set(getEtapasLeidas());
+
+set.add(id);
+
+localStorage.setItem(CLAVE_ETAPAS, JSON.stringify([...set]));
+
+renderEtapasNav();
+
+renderEtapaActiva();
+
+}
+
+
+
+function seleccionarEtapa(id){
+
+etapaActualId = id;
+
+renderEtapasNav();
+
+renderEtapaActiva();
+
+}
+
+
+
+function renderEtapasNav(){
+
+const leidas = new Set(getEtapasLeidas());
+
+const nav = document.getElementById("navEtapas");
+
+nav.innerHTML = ETAPAS_EBOOK.map(e => {
+
+const cls = [
+
+"etapa-tab",
+
+e.id === etapaActualId ? "activa" : "",
+
+leidas.has(e.id) ? "completada" : ""
+
+].filter(Boolean).join(" ");
+
+return `<button type="button" class="${cls}" onclick="seleccionarEtapa(${e.id})">
+
+<div class="num">Etapa ${e.id}</div>
+
+<div class="tit">${escHTML(e.titulo)}</div>
+
+</button>`;
+
+}).join("");
+
+
+
+const pct = Math.round((leidas.size / ETAPAS_EBOOK.length) * 100);
+
+document.getElementById("barraProgresoFill").style.width = pct + "%";
+
+document.getElementById("textoProgresoEtapas").textContent =
+
+`Progreso: ${leidas.size} / ${ETAPAS_EBOOK.length} etapas completadas (${pct}%)`;
+
+}
+
+
+
+function renderEtapaActiva(){
+
+const e = ETAPAS_EBOOK.find(x => x.id === etapaActualId) || ETAPAS_EBOOK[0];
+
+const leidas = new Set(getEtapasLeidas());
+
+const yaLeida = leidas.has(e.id);
+
+
+
+document.getElementById("contenedorEtapaActiva").innerHTML = `
+
+<article class="panel" style="background:var(--tarjeta-alt);margin-bottom:0">
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+
+<div>
+
+<span class="badge info">Etapa ${e.id} de ${ETAPAS_EBOOK.length}</span>
+
+<h3 style="font-size:1.22rem;margin-top:8px;margin-bottom:2px">${escHTML(e.titulo)}</h3>
+
+<p class="dim">${escHTML(e.subtitulo)}</p>
+
+</div>
+
+${yaLeida ? `<span class="badge ok">✔ Etapa completada</span>` : `<span class="badge pierde">En lectura</span>`}
+
+</div>
+
+
+
+<div class="cita-bloque">
+
+<p>"${escHTML(e.cita.texto)}"</p>
+
+<span>— ${escHTML(e.cita.autor)}</span>
+
+</div>
+
+
+
+<div class="historia-caja">
+
+<div class="etiqueta">Historia de Alberto ("Invertir Cuesta Arriba")</div>
+
+<p style="margin-bottom:0">${escHTML(e.historia)}</p>
+
+</div>
+
+
+
+<h4>Cuerpo, mente y vida cotidiana</h4>
+
+<ul class="concepto-lista">
+
+${e.pilaresVitales.map(p => `<li>${escHTML(p)}</li>`).join("")}
+
+</ul>
+
+
+
+<h4>Marco financiero de la etapa (enfoque educativo)</h4>
+
+<ul class="concepto-lista">
+
+${e.conceptosFinancieros.map(c => `<li>${escHTML(c)}</li>`).join("")}
+
+</ul>
+
+
+
+<div class="acciones-etapa">
+
+<button type="button" class="primario" onclick="marcarEtapaLeida(${e.id})">
+
+${yaLeida ? "✓ Etapa marcada como leída" : "Marcar etapa como completada"}
+
+</button>
+
+<button type="button" class="secundario" onclick="cargarEjemploEnSimulador(${e.id})">
+
+Probar ejemplo en el simulador (${escHTML(e.ejemploSimulador.item)})
+
+</button>
+
+${e.id < ETAPAS_EBOOK.length ? `<button type="button" class="secundario" onclick="seleccionarEtapa(${e.id + 1})">Siguiente etapa →</button>` : ""}
+
+</div>
+
+</article>
+
+`;
+
+}
+
+
+
+function cargarEjemploEnSimulador(id){
+
+const e = ETAPAS_EBOOK.find(x => x.id === id);
+
+if(!e) return;
+
+document.getElementById("item").value = e.ejemploSimulador.item;
+
+document.getElementById("tipo").value = e.ejemploSimulador.tipo;
+
+document.getElementById("monto").value = e.ejemploSimulador.monto;
+
+document.getElementById("meses").value = e.ejemploSimulador.meses;
+
+document.getElementById("usos").value = e.ejemploSimulador.usos;
+
+if(document.getElementById("seccionSimulador").style.display === "none"){
+
+cambiarModo("TODO");
+
+}
+
+document.getElementById("formularioIntencion").scrollIntoView({ behavior: "smooth" });
+
+}
+
+
+
+function cambiarModo(modo){
+  const secEtapas=document.getElementById("seccionEtapas"),secSim=document.getElementById("seccionSimulador");
+  const modos={TODO:"btnModoTodo",ETAPAS:"btnModoEtapas",SIMULADOR:"btnModoSimulador"};
+  for(const [key,id] of Object.entries(modos)){
+    const activo=key===modo,boton=document.getElementById(id);
+    boton.classList.toggle("activo",activo);boton.setAttribute("aria-pressed",String(activo));
+  }
+  secEtapas.style.display=(modo==="TODO"||modo==="ETAPAS")?"block":"none";
+  secSim.style.display=(modo==="TODO"||modo==="SIMULADOR")?"block":"none";
+}
+
+
+
+function mostrarHerramienta(cual){
+
+const map = { PMV: "toolPMV", DEUDAS: "toolDeudas", MOV: "toolMov", GLOSARIO: "toolGlosario" };
+
+const btnMap = { PMV: "tabToolPMV", DEUDAS: "tabToolDeudas", MOV: "tabToolMov", GLOSARIO: "tabToolGlosario" };
+
+for(const k of Object.keys(map)){
+
+document.getElementById(map[k]).style.display = (k === cual) ? "block" : "none";
+
+const b = document.getElementById(btnMap[k]);
+
+b.className = (k === cual) ? "primario" : "secundario";
+
+}
+
+if(cual === "GLOSARIO") renderGlosario();
+
+}
+
+
+
+function calcPMV(){
+
+const vals = ["pmvAlim","pmvTrans","pmvServ","pmvSalud","pmvEdu","pmvLibre"]
+
+.map(id => Math.max(0, parseFloat(document.getElementById(id).value) || 0));
+
+const suma = vals.reduce((a,b) => a+b, 0);
+
+document.getElementById("totalPMV").textContent = fmt(suma);
+
+}
+
+
+
+function getDeudas(){
+
+try { const v=JSON.parse(localStorage.getItem(CLAVE_DEUDAS)||"[]"); return Array.isArray(v)?v:[]; } catch { return []; }
+
+}
+
+
+
+function agregarDeuda(){
+
+const nombre = document.getElementById("deudaNombre").value.trim();
+
+const monto = parseFloat(document.getElementById("deudaMonto").value);
+
+const prioridad = document.getElementById("deudaPrioridad").value.trim() || "Sin especificar";
+
+if(!nombre || !Number.isFinite(monto) || monto <= 0){
+
+alert("Ingresá un nombre de deuda y un monto mayor a cero.");
+
+return;
+
+}
+
+const lista = getDeudas();
+
+lista.push({ id: uuid(), nombre, monto, prioridad });
+
+localStorage.setItem(CLAVE_DEUDAS, JSON.stringify(lista));
+
+document.getElementById("deudaNombre").value = "";
+
+document.getElementById("deudaMonto").value = "";
+
+document.getElementById("deudaPrioridad").value = "";
+
+renderDeudas();
+
+}
+
+
+
+function borrarDeuda(id){
+
+const lista = getDeudas().filter(d => d.id !== id);
+
+localStorage.setItem(CLAVE_DEUDAS, JSON.stringify(lista));
+
+renderDeudas();
+
+}
+
+
+
+function renderDeudas(){
+
+const lista = getDeudas();
+
+const tbody = document.getElementById("cuerpoDeudas");
+
+if(!lista.length){
+
+tbody.innerHTML = `<tr><td colspan="4" class="dim">Todavía no agregaste deudas a tu lista.</td></tr>`;
+
+return;
+
+}
+
+tbody.innerHTML = lista.map(d => `
+
+<tr>
+
+<td>${escHTML(d.nombre)}</td>
+
+<td class="moneda">${fmt(d.monto)}</td>
+
+<td>${escHTML(d.prioridad)}</td>
+
+<td><button type="button" onclick="borrarDeuda('${d.id}')" style="background:none;border:none;color:#e78a8a;width:auto">✕</button></td>
+
+</tr>
+
+`).join("");
+
+}
+
+
+
+function guardarPlanMov(){
+
+const payload = {
+
+habito: document.getElementById("movHabito").value.trim(),
+
+freq: document.getElementById("movFreq").value.trim(),
+
+nota: document.getElementById("movNota").value.trim()
+
+};
+
+localStorage.setItem(CLAVE_MOV, JSON.stringify(payload));
+
+document.getElementById("estadoPlanMov").textContent = "Guardado en tu navegador.";
+
+}
+
+
+
+function cargarPlanMov(){
+
+try {
+
+const p = JSON.parse(localStorage.getItem(CLAVE_MOV) || "null");
+
+if(!p) return;
+
+if(p.habito) document.getElementById("movHabito").value = p.habito;
+
+if(p.freq) document.getElementById("movFreq").value = p.freq;
+
+if(p.nota) document.getElementById("movNota").value = p.nota;
+
+} catch {}
+
+}
+
+
+
+function renderGlosario(){
+
+const q = (document.getElementById("filtroGlosario")?.value || "").trim().toLowerCase();
+
+const filtrados = GLOSARIO_ITEMS.filter(item =>
+
+!q || item.term.toLowerCase().includes(q) || item.def.toLowerCase().includes(q) || item.etapa.toLowerCase().includes(q)
+
+);
+
+const host = document.getElementById("listaGlosario");
+
+if(!filtrados.length){
+
+host.innerHTML = `<p class="dim">No hay coincidencias para "${escHTML(q)}".</p>`;
+
+return;
+
+}
+
+host.innerHTML = filtrados.map(item => `
+
+<div style="border-top:1px solid var(--borde);padding:8px 0">
+
+<b>${escHTML(item.term)}</b> <span class="badge info" style="margin-left:6px">${escHTML(item.etapa)}</span>
+
+<p class="dim" style="margin:4px 0 0">${escHTML(item.def)}</p>
+
+</div>
+
+`).join("");
+
+}
+
+
+/* ============================================================
+   MOTOR "DEBO ENGINE v2" EN JAVASCRIPT
+   Soporte para ingesta JSON + Monte Carlo Bi-Variable (CEDEAR)
+   ============================================================ */
+
+// Los FCI se incorporan exclusivamente desde tasas_mercado.json.
+// No hay tasas FCI locales de respaldo ni instrumentos antiguos con tasas fijas.
+let VEHICULOS = [
+  { id:"CEDEAR_SPY", nombre:"CEDEAR SPY (S&P 500 en ARS)", source:"ESCENARIO_ILUSTRATIVO",
+    tna:0, fees:0.001, min:null, liq:1, tax:0, risky:true,
+    muUSD:0.08, sigmaUSD:0.18, muDev:0.35, sigmaDev:0.15, cur:"ARS",
+    datoLocalNoVerificado:true }
+];
+
+const FCI_OBJETIVO = [
+  {id:"BALZ_MM_PESOS_A", nombre:"Balanz Capital Money Market — Clase A"},
+  {id:"BALZ_MM_PESOS_L", nombre:"Balanz Capital Money Market — Clase L Ley N° 27.743"},
+  {id:"BALZ_PERFORMANCE_XIII_D", nombre:"Balanz Performance XIII — Clase D"},
+  {id:"IOL_CASH_MGMT_B", nombre:"IOL Cash Management — Clase B"},
+  {id:"UALINTEC_AHORRO_A", nombre:"Ualintec Ahorro Pesos — Clase A"},
+  {id:"UALINTEC_PESOS_PLUS_A", nombre:"Ualintec Pesos Plus — Clase A"}
+];
+
+// Supuestos ilustrativos fijos; no son pronósticos ni se actualizan con la ingesta semanal.
+const INFLACION_MENSUAL = { ARS:0.028, USD:0.0025 };
+
+// ---------- Helpers matemáticos ----------
+const fmt = n => "$ " + Math.round(n).toLocaleString("es-AR");
+// Convención explícita: TNA nominal anual prorrateada en 12 meses;
+ // comisión anual prorrateada mensualmente. No equivale a una cotización diaria.
+const temNeto = v => (1 + Number(v.tna)/12) * (1 - Number(v.fees||0)/12) - 1;
+const teaNeta = v => Math.pow(1+temNeto(v),12)-1;
+const deflactor = (cur,n) => Math.pow(1+INFLACION_MENSUAL[cur],n);
+// Impuesto solo sobre ganancias positivas; una pérdida no genera un crédito fiscal automático.
+const netoImpuestos = (fv,aportado,tax) => {
+  const ganancia = Math.max(0, fv - aportado);
+  return fv - ganancia * Math.min(1, Math.max(0, Number(tax)||0));
+};
+
+function fvAnualidad(pmt,n,r){
+  if(r===0) return pmt*n;
+  return pmt * (Math.pow(1+r,n)-1)/r; // aportes al final de cada mes
+}
+function fvAnualidadReal(pmt,n,r,inflacion){
+  // Valor futuro nominal expresado en poder de compra del inicio del horizonte.
+  return fvAnualidad(pmt,n,r) / Math.pow(1 + inflacion, n);
+}
+
+function mulberry32(semilla){
+  return function(){
+    semilla |= 0; semilla = semilla + 0x6D2B79F5 | 0;
+    let t = Math.imul(semilla ^ semilla >>> 15, 1 | semilla);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function gaussiana(rng){
+  let u=0; while(u===0) u=rng();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*rng());
+}
+
+// ---------- Plan B seguro ----------
+function calcSeguro(pmt,n,v){
+  const aportado=pmt*n, r=temNeto(v), fvNominal=fvAnualidad(pmt,n,r);
+  const inflacion=INFLACION_MENSUAL[v.cur] ?? 0;
+  const fvReal=fvAnualidadReal(pmt,n,r,inflacion);
+  let aportadoReal=0;
+  for(let k=1;k<=n;k++) aportadoReal += pmt/Math.pow(1+inflacion,k);
+  return {
+    tea:teaNeta(v),fvNominal,fvReal,
+    multNominal:fvNominal/aportado,
+    multReal:aportadoReal>0?fvReal/aportadoReal:0,
+    pierdeInflacion:r<inflacion,
+    minimoReferencia:v.min
+  };
+}
+
+// ---------- Plan B riesgoso (Monte Carlo Bi-Variable: Subyacente + Devaluación) ----------
+function calcRiesgosoBiVariable(pmt,n,v,sims=5000,semilla=42){
+  const rng = mulberry32(semilla);
+  const aportado = pmt*n;
+  const fvs = new Float64Array(sims);
+  
+  const muUSD_M = v.muUSD/12, sigmaUSD_M = v.sigmaUSD/Math.sqrt(12);
+  const muDev_M = v.muDev/12, sigmaDev_M = v.sigmaDev/Math.sqrt(12);
+
+  for(let s=0; s<sims; s++){
+    let acc = 0;
+    for(let m=0; m<n; m++){
+      let rUSD = muUSD_M + sigmaUSD_M * gaussiana(rng);
+      let rDev = muDev_M + sigmaDev_M * gaussiana(rng);
+      // Retorno combinado en ARS
+      let rARS = (1 + rUSD) * (1 + rDev) - 1;
+      acc = acc * (1 + rARS) * (1 - v.fees/12) + pmt;
+    }
+    fvs[s] = netoImpuestos(acc, aportado, v.tax);
+  }
+  fvs.sort((a,b)=>a-b);
+  const pct = p => fvs[Math.floor(sims*p)];
+  let perdidas=0; for(let s=0;s<sims;s++) if(fvs[s]<aportado) perdidas++;
+
+  return { p25:pct(0.25), p50:pct(0.50), p75:pct(0.75), probPerder: perdidas/sims, sims };
+}
+
+function trayectoriasMCBiVariable(pmt,n,v,cant=40){
+  const rng = mulberry32(7);
+  const muUSD_M = v.muUSD/12, sigmaUSD_M = v.sigmaUSD/Math.sqrt(12);
+  const muDev_M = v.muDev/12, sigmaDev_M = v.sigmaDev/Math.sqrt(12);
+  const lineas=[];
+  
+  for(let s=0; s<cant; s++){
+    let acc=0; const pts=[acc];
+    for(let m=0; m<n; m++){
+      let rUSD = muUSD_M + sigmaUSD_M * gaussiana(rng);
+      let rDev = muDev_M + sigmaDev_M * gaussiana(rng);
+      let rARS = (1 + rUSD) * (1 + rDev) - 1;
+      acc = acc * (1 + rARS) * (1 - v.fees/12) + pmt;
+      pts.push(acc);
+    }
+    lineas.push(pts);
+  }
+  return lineas;
+}
+
+function calcUnico(pv,n,v){
+  const fv=pv*Math.pow(1+temNeto(v),n);
+  const inflacion=INFLACION_MENSUAL[v.cur] ?? 0;
+  return {dejaDeRendir:fv-pv,fvNeto:fv,fvReal:fv/Math.pow(1+inflacion,n)};
+}
+
+// ---------- Orquestador principal ----------
+let ultimaIntencion = null;
+// La comparación espera a que termine la lectura del catálogo, incluso si el
+// usuario pulsa el botón inmediatamente después de abrir la página.
+let promesaCargaTasas = Promise.resolve();
+
+async function ejecutar(){
+  await promesaCargaTasas;
+  const item  = document.getElementById("item").value.trim() || "Sin nombre";
+  const tipo  = document.getElementById("tipo").value;
+  const monto = parseFloat(document.getElementById("monto").value);
+  const meses = Number(document.getElementById("meses").value);
+  const usos  = parseFloat(document.getElementById("usos").value) || 0;
+  const ingreso = parseFloat(document.getElementById("ingresoMensual").value) || 0;
+
+  if(!Number.isFinite(monto) || monto<=0 || !Number.isInteger(meses) || meses<1 || meses>360 ||
+     !Number.isFinite(usos) || usos<0 || !Number.isFinite(ingreso) || ingreso<0){
+     alert("Revisá los datos: monto positivo, meses enteros entre 1 y 360, usos e ingreso no negativos."); return;
+   }
+
+  ultimaIntencion = { item, tipo, monto, meses, usos, ingreso, fecha: new Date().toISOString() };
+
+  const gA = document.getElementById("zonaGastar");
+  const gS = document.getElementById("zonaSeguro");
+  const gR = document.getElementById("zonaRiesgo");
+
+  // Fase 3a: Opción A (Gastar)
+  let costoUso = usos>0 ? ((tipo==="RECURRENTE" ? monto*meses : monto)/usos) : null;
+  let htmlA = `<div class="tarjeta gastar"><h3>❌ ${escHTML(item)}</h3>
+    <div class="grande moneda" style="color:var(--rojo)">${fmt(tipo==="RECURRENTE"? monto*meses : monto)}</div>
+    <div class="dim">${tipo==="RECURRENTE" ? `${fmt(monto)} × ${meses} meses.` : `Pago único hoy. Deja de rendir ${meses} meses.`}</div>
+    ${costoUso ? `<div class="dim">Costo por uso previsto: <b class="moneda">${fmt(costoUso)}</b> (${usos} usos)</div>` : ""}
+  </div>`;
+  gA.innerHTML = htmlA;
+
+  // Fase 3b/c: Plan B
+  gS.innerHTML=""; gR.innerHTML="";
+  for(const v of VEHICULOS){
+    if(v.risky){
+      if(tipo==="UNICO") continue;
+      const r = calcRiesgosoBiVariable(monto,meses,v);
+      gR.innerHTML += `<div class="tarjeta riesgo"><h3>${v.nombre}</h3>
+        <div class="dim">Escenario ilustrativo a ${meses} meses (Monte Carlo; parámetros de retorno/volatilidad configurados, no pronóstico):</div>
+        <div class="grande moneda" style="color:var(--azul)">${fmt(r.p25)} – ${fmt(r.p75)}</div>
+        <div class="dim">Mediana: <b class="moneda">${fmt(r.p50)}</b> · Prob. de terminar por debajo de los aportes nominales: <b>${(r.probPerder*100).toFixed(0)}%</b></div>
+        <canvas id="mc-${v.id}" width="560" height="180"></canvas>
+      </div>`;
+    } else if(tipo==="UNICO"){
+      const u = calcUnico(monto,meses,v);
+      gS.innerHTML += tarjetaSeguroUnico(v,u,monto);
+    } else {
+      const r = calcSeguro(monto,meses,v);
+      gS.innerHTML += tarjetaSeguro(v,r);
+    }
+  }
+
+  for(const v of VEHICULOS) if(v.risky && tipo!=="UNICO"){
+    const cv = document.getElementById("mc-"+v.id);
+    if(cv) dibujarMC(cv, trayectoriasMCBiVariable(monto,meses,v), monto*meses);
+  }
+
+  document.getElementById("resultados").style.display="block";
+  document.getElementById("resultados").scrollIntoView({behavior:"smooth"});
+}
+
+function tarjetaSeguro(v,r){
+  const badge = r.pierdeInflacion
+    ? `<span class="badge pierde">Estimación por debajo de la inflación supuesta (${v.cur})</span>`
+    : `<span class="badge ok">Estimación por encima de la inflación supuesta (${v.cur})</span>`;
+  return `<div class="tarjeta seguro"><h3>${escHTML(v.nombre)}</h3>
+    <div class="dim">TNA observada: <b>${porcentajeFraccion(v.tna)}</b> · Fecha: ${fechaCorta(v.fecha_observacion)}</div>
+    <div class="dim">TEA equivalente estimada a partir de TNA/12. No es una tasa garantizada.</div>
+    <div class="grande moneda" style="color:var(--verde)">${(r.tea*100).toFixed(1)}%</div>
+    <div class="dim">Valor futuro neto (nominal): <b class="moneda">${fmt(r.fvNominal)}</b></div>
+    <div class="dim">Valor equivalente en poder de compra de hoy: <b class="moneda">${fmt(r.fvReal)}</b></div>
+    <div class="dim">${v.liq!=null ? `Liquidación informada: T+${v.liq}` : "Plazo de liquidación no informado"}</div>${badge}</div>`;
+}
+
+function tarjetaSeguroUnico(v,u,monto){
+  const pierde=teaNeta(v)<Math.pow(1+INFLACION_MENSUAL[v.cur],12)-1;
+  return `<div class="tarjeta seguro"><h3>${escHTML(v.nombre)}</h3>
+    <div class="dim">TNA observada: <b>${porcentajeFraccion(v.tna)}</b> · Fecha: ${fechaCorta(v.fecha_observacion)}</div>
+    <div class="dim">Si pagás ${fmt(monto)} hoy, el costo de oportunidad estimado es:</div>
+    <div class="grande moneda" style="color:var(--rojo)">${fmt(u.dejaDeRendir)}</div>
+    <div class="dim">Valor futuro nominal estimado: <b class="moneda">${fmt(u.fvNeto)}</b></div>
+    <div class="dim">Equivalente en poder de compra de hoy: <b class="moneda">${fmt(u.fvReal)}</b></div>
+    ${pierde?`<span class="badge pierde">Estimación por debajo de la inflación supuesta (${v.cur})</span>`:`<span class="badge ok">Estimación por encima de la inflación supuesta (${v.cur})</span>`}
+  </div>`;
+}
+function mesesTxt(){ return document.getElementById("meses").value + " meses"; }
+
+function dibujarMC(cv,lineas,equilibrio){
+  const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  let maxV=equilibrio;
+  for(const l of lineas) maxV=Math.max(maxV,l[l.length-1]);
+  const px=i=>i/(lineas[0].length-1)*(W-8)+4, py=v=>H-6-(v/maxV)*(H-20);
+  ctx.strokeStyle="#5a636e"; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(4,py(equilibrio)); ctx.lineTo(W-4,py(equilibrio)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="#9aa3ad"; ctx.font="10px monospace"; ctx.fillText("gastar",6,py(equilibrio)-3);
+  for(const l of lineas){
+    ctx.strokeStyle="rgba(47,111,178,.25)"; ctx.lineWidth=1;
+    ctx.beginPath(); l.forEach((v,i)=> i?ctx.lineTo(px(i),py(v)):ctx.moveTo(px(i),py(v))); ctx.stroke();
+  }
+}
+
+// ---------- Fase 4 y 5: Registro y Perfilado ----------
+const CLAVE_LS = "fibrx_debo_checks";
+
+function leerRegistroSeguro(){
+  try{const d=JSON.parse(localStorage.getItem(CLAVE_LS)||"[]");return Array.isArray(d)?d:[];}
+  catch{return [];}
+}
+function decidir(decision){
+  if(!ultimaIntencion){ alert("Primero corré el chequeo (Fase 1)."); return; }
+  const reg = leerRegistroSeguro();
+  reg.push({ ...ultimaIntencion, check_id: uuid(), decision, usosReales:null });
+  localStorage.setItem(CLAVE_LS, JSON.stringify(reg));
+  renderRegistro();
+  alert("Decisión registrada: " + decision);
+}
+
+function registrarUsos(id, valor){
+  const reg = leerRegistroSeguro();
+  const r = reg.find(x=>x.check_id===id); if(!r) return;
+  r.usosReales = parseFloat(valor) || 0;
+  localStorage.setItem(CLAVE_LS, JSON.stringify(reg));
+  renderRegistro();
+}
+
+function borrarRegistro(id){
+  const reg = leerRegistroSeguro().filter(x=>x.check_id!==id);
+  localStorage.setItem(CLAVE_LS, JSON.stringify(reg));
+  renderRegistro();
+}
+
+function renderRegistro(){
+  const reg = leerRegistroSeguro();
+  const tbody = document.getElementById("tablaRegistro");
+  const sec = document.getElementById("seccionRegistro");
+  if(reg.length===0){ sec.style.display="none"; return; }
+  sec.style.display="block";
+
+  tbody.innerHTML = reg.map(r=>{
+    const costoTotal = r.tipo === "RECURRENTE" ? r.monto * r.meses : r.monto;
+    let usosHtml, cpuHtml, veredicto;
+    if(r.usosReales==null){
+      usosHtml = `<input type="number" min="0" step="any" style="width:90px"
+        onchange="registrarUsos('${r.check_id}',this.value)" placeholder="¿usos?">`;
+      cpuHtml = `<span class="dim">—</span>`;
+      veredicto = `<span class="dim">— pendiente —</span>`;
+    } else {
+      const cpu = r.usosReales > 0 ? costoTotal / r.usosReales : null;
+      // Heurística configurable (0,5% del ingreso); no es un estándar técnico ni contable.
+      const umbralPerfil = r.ingreso ? (r.ingreso * 0.005) : 2000;
+      const eficiente = cpu !== null && cpu <= umbralPerfil;
+      usosHtml = `<span class="moneda">${r.usosReales}</span>`;
+      cpuHtml = cpu === null ? `<span class="dim">No calculable (0 usos)</span>` : `<span class="moneda">${fmt(cpu)}</span>`;
+      veredicto = cpu === null ? `<span class="dim">No evaluable</span>` : (eficiente
+        ? `<span class="veredicto-eficiente">✔ Dentro del umbral orientativo (&le; ${fmt(umbralPerfil)})</span>`
+        : `<span class="veredicto-caro">✘ Supera el umbral orientativo (> ${fmt(umbralPerfil)})</span>`);
+    }
+    return `<tr><td>${escHTML(String(r.fecha||"").slice(0,10))}</td><td>${escHTML(r.item)}</td>
+      <td class="moneda">${fmt(costoTotal)}${r.tipo==="RECURRENTE"?` ( ${fmt(r.monto)}/mes × ${r.meses} )`:""}</td>
+      <td>${escHTML(r.decision)}</td><td>${usosHtml}</td><td>${cpuHtml}</td>
+      <td>${veredicto}</td>
+      <td><button onclick="borrarRegistro('${r.check_id}')" style="background:none;border:none;color:#e78a8a">✕</button></td></tr>`;
+  }).join("");
+}
+
+// ---------- Presentación y carga del catálogo ArgentinaDatos ----------
+const escHTML = value => String(value ?? "—").replace(/[&<>"']/g, c => ({
+  "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+}[c]));
+const mostrar = value => {
+  if(value===null || value===undefined || value==="") return "No informado";
+  if(typeof value==="object") return JSON.stringify(value);
+  return String(value);
+};
+const porcentajePuntos = value => {
+  if(value===null || value===undefined || value==="") return "No informado";
+  const n=Number(value);
+  return Number.isFinite(n) ? `${n.toLocaleString("es-AR",{maximumFractionDigits:4})}%` : "No informado";
+};
+const porcentajeFraccion = value => {
+  const n=Number(value);
+  return Number.isFinite(n) ? `${(n*100).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:4})}%` : "No informado";
+};
+const fechaCorta = value => {
+  if(!value) return "No informada";
+  const s=String(value);
+  const d=new Date(`${s.slice(0,10)}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? escHTML(s) : d.toLocaleDateString("es-AR");
+};
+const fmtDato = value => {
+  const n=Number(value);
+  return value!==null && value!==undefined && value!=="" && Number.isFinite(n)
+    ? n.toLocaleString("es-AR",{maximumFractionDigits:6}) : mostrar(value);
+};
+function renderCatalogoFCI(data){
+  const host=document.getElementById("catalogoFci");
+  const externos=new Map((Array.isArray(data?.vehiculos)?data.vehiculos:[]).map(v=>[v.id,v]));
+  host.innerHTML=FCI_OBJETIVO.map(cfg=>{
+    const v=externos.get(cfg.id);
+    if(!v){
+      return `<article class="fci-card no-data">
+        <div class="fci-head"><h3>${escHTML(cfg.nombre)}</h3><span class="badge no-elegible">Sin dato publicado</span></div>
+        <div class="fci-meta">ID esperado: ${escHTML(cfg.id)}</div>
+        <p class="fci-nota">Esta clase no está presente en el catálogo recibido. No se sustituye por otra clase ni por una tasa de respaldo.</p>
+      </article>`;
+    }
+    const contraste=v.contraste_mercado_dinero;
+    const contrasteTxt=contraste
+      ? (typeof contraste==="object" ? (contraste.estado || contraste.resultado || "Contraste informado") : String(contraste))
+      : "Sin contraste informado";
+    const fuentesTxt=Array.isArray(v.fuentes) ? v.fuentes.join(" · ") : mostrar(v.fuentes);
+    const cafci=v.referencia_cafci;
+    const cafciTxt=cafci && typeof cafci==="object"
+      ? `Fondo ${mostrar(cafci.fondo_id ?? cafci.fondo)} / Clase ${mostrar(cafci.clase_id ?? cafci.clase)}`
+      : mostrar(cafci);
+    const validacion=mostrar(v.nivel_validacion || v.estado_dato);
+    const returns = [
+      ["7 días", porcentajePuntos(v.retorno_7d)],
+      ["30 días", porcentajePuntos(v.retorno_30d)],
+      ["90 días", porcentajePuntos(v.retorno_90d)]
+    ];
+    const minimoLabel = v.inversion_minima_informada!=null ? `${fmtDato(v.inversion_minima_informada)} (dato informado por fuente; confirmar mínimo operativo)` : "No informado";
+    const details=[
+      ["Fecha observada",fechaCorta(v.fecha_observacion)],
+      ["Período TNA",mostrar(v.periodo_tna)],
+      ["Base TNA",v.dias_base_tna!=null?`${v.dias_base_tna} días`:"No informada"],
+      ["Valor cuotaparte",fmtDato(v.valor_cuotaparte)],
+      ["Administradora",mostrar(v.administradora)],
+      ["Depositario",mostrar(v.depositaria)],
+      ["Moneda",mostrar(v.moneda_fondo)],
+      ["Liquidación",v.plazo_liquidacion_dias!=null?`${v.plazo_liquidacion_dias} día(s)`:"No informada"],
+      ["Mínimo informado",minimoLabel],
+      ["Honorarios informados",mostrar(v.honorarios_informados)],
+      ["Retorno 7 días",returns[0][1]],
+      ["Retorno 30 días",returns[1][1]],
+      ["Retorno 90 días",returns[2][1]]
+    ];
+    const tna=Number(v.tna);
+    const tnaTxt=Number.isFinite(tna)&&tna>0 ? porcentajeFraccion(tna) : "No disponible";
+    return `<article class="fci-card">
+      <div class="fci-head"><h3>${escHTML(v.nombre || v.nombre_api || cfg.nombre)}</h3><span class="badge ok">${escHTML(validacion)}</span></div>
+      <div class="fci-meta">ID: ${escHTML(v.id)} · Fuente: ArgentinaDatos</div>
+      <div class="fci-tna">${escHTML(tnaTxt)}</div>
+      <div class="fci-meta">${escHTML(mostrar(v.tipo_indicador))} · Unidad original: ${escHTML(mostrar(v.unidad_original))}</div>
+      <div class="fci-datos">${details.map(([k,val])=>`<div class="fci-dato">${escHTML(k)}<b>${escHTML(val)}</b></div>`).join("")}</div>
+      <div class="fci-nota">Fuente(s): ${escHTML(fuentesTxt)}<br>Referencia CAFCI: ${escHTML(cafciTxt)}<br>fondoId API: ${escHTML(mostrar(v.fondoId))} · claseId API: ${escHTML(mostrar(v.claseId))} · código CNV: ${escHTML(mostrar(v.codigoCNV))}<br>Contraste mercado dinero: ${escHTML(contrasteTxt)}</div>
+    </article>`;
+  }).join("");
+  const publicados=FCI_OBJETIVO.filter(x=>externos.has(x.id)).length;
+  document.getElementById("estadoCatalogoFci").textContent=
+    `${publicados} de ${FCI_OBJETIVO.length} clases publicadas · ${mostrar(data?.estado_global)} · Fuente: ArgentinaDatos`;
+}
+function esMonedaARS(valor){
+  if(valor===null || valor===undefined) return false;
+  const moneda=String(valor).trim().toUpperCase()
+    .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"")
+    .replace(/\\s+/g," ");
+  return [
+    "ARS",
+    "PESO ARGENTINO",
+    "PESOS ARGENTINOS",
+    "PESO",
+    "PESOS",
+    "ARGENTINE PESO",
+    "ARGENTINE PESOS"
+  ].includes(moneda);
+}
+function validarCatalogoTasas(data){
+  if(!data||data.estado_global!=="DATOS_ARGENTINADATOS_UNA_FUENTE"||!Array.isArray(data.vehiculos))
+    throw new Error("El JSON no tiene el estado o la estructura esperada.");
+  const ids=new Set();
+  for(const v of data.vehiculos){
+    if(!v||typeof v.id!=="string"||!v.id.trim())throw new Error("Registro sin ID en el catálogo.");
+    if(ids.has(v.id))throw new Error("ID duplicado en el catálogo: "+v.id);
+    ids.add(v.id);
+  }
+  return data;
+}
+function mostrarErrorTasas(error){
+  VEHICULOS=VEHICULOS.filter(v=>v.risky);
+  document.getElementById("origenTasas").textContent="Sin tasas FCI utilizables — no se aplican tasas de respaldo";
+  document.getElementById("fechaTasas").textContent="No hay actualización verificada";
+  document.getElementById("estadoCatalogoFci").textContent="No se pudo cargar o validar el catálogo FCI.";
+  const estadoComparacion=document.getElementById("estadoComparacionFci");
+  if(estadoComparacion) estadoComparacion.textContent="No hay clases FCI con datos validados para comparar. Se conserva únicamente el escenario de riesgo ilustrativo.";
+  document.getElementById("catalogoFci").innerHTML=FCI_OBJETIVO.map(cfg=>
+    `<article class="fci-card no-data"><h3>${escHTML(cfg.nombre)}</h3><span class="badge no-elegible">No disponible</span><p class="fci-nota">${escHTML(error?.message||"Error de lectura")}</p></article>`
+  ).join("");
+}
+function aplicarDatosTasas(data,origen="ArgentinaDatos"){
+  validarCatalogoTasas(data);
+  renderCatalogoFCI(data);
+  const externos=new Map(data.vehiculos.map(v=>[v.id,v]));
+  const locales=new Map(VEHICULOS.map(v=>[v.id,v]));
+  const actualizados=[];
+  for(const cfg of FCI_OBJETIVO){
+    const ext=externos.get(cfg.id);
+    if(!ext)continue;
+    const tna=Number(ext.tna);
+    if(!Number.isFinite(tna)||tna<=0||tna>5)continue; // El JSON v6 expresa TNA como fracción.
+    // ArgentinaDatos informa la moneda como "Peso Argentino", no siempre
+    // con el código ISO "ARS". Si no hay una moneda reconocida, se excluye.
+    const monedaInformada=ext.moneda_fondo ?? ext.cur;
+    if(!esMonedaARS(monedaInformada))continue;
+    const local=locales.get(cfg.id)||{};
+    actualizados.push({...local,...ext,
+      nombre:ext.nombre||ext.nombre_api||local.nombre||cfg.nombre,
+      tna,fees:0,tax:0,risky:false,cur:"ARS",
+      min:Number(ext.inversion_minima_informada)>0?Number(ext.inversion_minima_informada):null,
+      liq:ext.plazo_liquidacion_dias!=null?Number(ext.plazo_liquidacion_dias):null,
+      datoLocalNoVerificado:false
+    });
+  }
+  VEHICULOS=[...actualizados,...VEHICULOS.filter(v=>v.risky)];
+  const estadoComparacion=document.getElementById("estadoComparacionFci");
+  if(estadoComparacion){
+    estadoComparacion.textContent = `${actualizados.length} de ${FCI_OBJETIVO.length} clases FCI con TNA ARS validada para comparar. Las clases faltantes se muestran como no disponibles; no se sustituyen por otras.`;
+  }
+  document.getElementById("origenTasas").textContent=origen+" — una fuente pública; clases FCI individuales";
+  const fecha=data.fecha_datos_fuente||data.actualizado_el||"Fecha no informada";
+  const el=document.getElementById("fechaTasas");el.textContent=fecha;
+  if(fecha!=="Fecha no informada")el.dateTime=fecha;
+  if(!actualizados.length)document.getElementById("origenTasas").textContent="Catálogo recibido, pero sin TNA ARS utilizable para calcular";
+}
+async function cargarTasasDelJSON(){
+  try{
+    const res=await fetch("tasas_mercado.json?ts="+Date.now(),{cache:"no-store"});
+    if(!res.ok)throw new Error("No se encontró tasas_mercado.json junto a la página.");
+    aplicarDatosTasas(await res.json(),"ArgentinaDatos");
+  }catch(e){mostrarErrorTasas(e);}
+}
+
+renderEtapasNav();
+renderEtapaActiva();
+calcPMV();
+renderDeudas();
+cargarPlanMov();
+promesaCargaTasas = cargarTasasDelJSON();
+renderRegistro();
+
+
+</script>
+</body>
+</html>
