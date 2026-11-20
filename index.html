@@ -420,11 +420,12 @@ Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b
 
 <!-- ============ FASE 3: RESULTADOS ============ -->
 <section id="resultados" class="resultados" style="display:none" aria-live="polite" aria-labelledby="tituloResultados">
-  <div class="section-intro"><span class="eyebrow">PASO 2 · COMPARACIÓN</span><h2 id="tituloResultados">Tus escenarios</h2><p class="dim">Los importes son estimaciones bajo los supuestos indicados; no representan rendimientos garantizados.</p></div>
+  <div class="section-intro"><span class="eyebrow">PASO 2 · COMPARACIÓN</span><h2 id="tituloResultados">Tus escenarios</h2><p class="dim">Los importes son estimaciones bajo los supuestos indicados; no representan rendimientos garantizados. En Plan B se comparan las clases FCI disponibles individualmente, sin mezclar clases ni reemplazar datos faltantes.</p></div>
   <h2>Opción A · Realizar la compra</h2>
   <div class="grid" id="zonaGastar"></div>
 
-  <h2>Plan B · FCI en pesos (escenario estimado, no garantizado)</h2>
+  <h2>Plan B · Comparación de FCI en pesos (escenario estimado, no garantizado)</h2>
+  <p class="dim" id="estadoComparacionFci">Esperando la carga y validación de las seis clases del catálogo.</p>
   <div class="grid" id="zonaSeguro"></div>
 
   <h2>Escenario de riesgo · CEDEAR SPY (ilustrativo)</h2>
@@ -1367,7 +1368,8 @@ function tarjetaSeguro(v,r){
   const badge = r.pierdeInflacion
     ? `<span class="badge pierde">Estimación por debajo de la inflación supuesta (${v.cur})</span>`
     : `<span class="badge ok">Estimación por encima de la inflación supuesta (${v.cur})</span>`;
-  return `<div class="tarjeta seguro"><h3>${v.nombre}</h3>
+  return `<div class="tarjeta seguro"><h3>${escHTML(v.nombre)}</h3>
+    <div class="dim">TNA observada: <b>${porcentajeFraccion(v.tna)}</b> · Fecha: ${fechaCorta(v.fecha_observacion)}</div>
     <div class="dim">TEA equivalente estimada a partir de TNA/12. No es una tasa garantizada.</div>
     <div class="grande moneda" style="color:var(--verde)">${(r.tea*100).toFixed(1)}%</div>
     <div class="dim">Valor futuro neto (nominal): <b class="moneda">${fmt(r.fvNominal)}</b></div>
@@ -1378,6 +1380,7 @@ function tarjetaSeguro(v,r){
 function tarjetaSeguroUnico(v,u,monto){
   const pierde=teaNeta(v)<Math.pow(1+INFLACION_MENSUAL[v.cur],12)-1;
   return `<div class="tarjeta seguro"><h3>${escHTML(v.nombre)}</h3>
+    <div class="dim">TNA observada: <b>${porcentajeFraccion(v.tna)}</b> · Fecha: ${fechaCorta(v.fecha_observacion)}</div>
     <div class="dim">Si pagás ${fmt(monto)} hoy, el costo de oportunidad estimado es:</div>
     <div class="grande moneda" style="color:var(--rojo)">${fmt(u.dejaDeRendir)}</div>
     <div class="dim">Valor futuro nominal estimado: <b class="moneda">${fmt(u.fvNeto)}</b></div>
@@ -1554,7 +1557,7 @@ function renderCatalogoFCI(data){
   document.getElementById("estadoCatalogoFci").textContent=
     `${publicados} de ${FCI_OBJETIVO.length} clases publicadas · ${mostrar(data?.estado_global)} · Fuente: ArgentinaDatos`;
 }
-async function validarCatalogoTasas(data){
+function validarCatalogoTasas(data){
   if(!data||data.estado_global!=="DATOS_ARGENTINADATOS_UNA_FUENTE"||!Array.isArray(data.vehiculos))
     throw new Error("El JSON no tiene el estado o la estructura esperada.");
   const ids=new Set();
@@ -1570,6 +1573,8 @@ function mostrarErrorTasas(error){
   document.getElementById("origenTasas").textContent="Sin tasas FCI utilizables — no se aplican tasas de respaldo";
   document.getElementById("fechaTasas").textContent="No hay actualización verificada";
   document.getElementById("estadoCatalogoFci").textContent="No se pudo cargar o validar el catálogo FCI.";
+  const estadoComparacion=document.getElementById("estadoComparacionFci");
+  if(estadoComparacion) estadoComparacion.textContent="No hay clases FCI con datos validados para comparar. Se conserva únicamente el escenario de riesgo ilustrativo.";
   document.getElementById("catalogoFci").innerHTML=FCI_OBJETIVO.map(cfg=>
     `<article class="fci-card no-data"><h3>${escHTML(cfg.nombre)}</h3><span class="badge no-elegible">No disponible</span><p class="fci-nota">${escHTML(error?.message||"Error de lectura")}</p></article>`
   ).join("");
@@ -1596,6 +1601,10 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
     });
   }
   VEHICULOS=[...actualizados,...VEHICULOS.filter(v=>v.risky)];
+  const estadoComparacion=document.getElementById("estadoComparacionFci");
+  if(estadoComparacion){
+    estadoComparacion.textContent = `${actualizados.length} de ${FCI_OBJETIVO.length} clases FCI con TNA ARS validada para comparar. Las clases faltantes se muestran como no disponibles; no se sustituyen por otras.`;
+  }
   document.getElementById("origenTasas").textContent=origen+" — una fuente pública; clases FCI individuales";
   const fecha=data.fecha_datos_fuente||data.actualizado_el||"Fecha no informada";
   const el=document.getElementById("fechaTasas");el.textContent=fecha;

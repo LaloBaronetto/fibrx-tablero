@@ -1,36 +1,64 @@
-name: Actualizar tasas FIBRX
+name: Actualizar Tasas FCI FIBRX
 
 on:
-  # Se conserva el disparo semanal existente hasta validar la integración en producción.
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '0 8 * * 1' # Lunes 08:00 UTC
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: fibrx-actualizar-tasas
+  cancel-in-progress: false
 
 jobs:
   actualizar:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Clonar repositorio
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
-      - name: Consultar ArgentinaDatos + Fonditos
-        env:
-          FONDITOS_API_KEY: ${{ secrets.FONDITOS_API_KEY }}
+      - name: Validar sintaxis de ingesta
+        run: python -m py_compile ingesta_tasas.py
+
+      - name: Consultar y validar seis clases FCI
         run: python ingesta_tasas.py
 
-      - name: Commit y Push de tasas verificadas
+      - name: Validar JSON publicado
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("tasas_mercado.json")
+          d = json.loads(p.read_text(encoding="utf-8"))
+          expected = {
+              "BALZ_MM_PESOS_A", "BALZ_MM_PESOS_L", "BALZ_PERFORMANCE_XIII_D",
+              "IOL_CASH_MGMT_B", "UALINTEC_AHORRO_A", "UALINTEC_PESOS_PLUS_A"
+          }
+          actual = {x.get("id") for x in d.get("vehiculos", [])}
+          assert d.get("schema_version") == 6, "El JSON no es esquema 6"
+          assert d.get("estado_global") == "DATOS_ARGENTINADATOS_UNA_FUENTE", "Estado global inesperado"
+          assert actual == expected, f"Clases incorrectas: {sorted(actual)}"
+          assert len(d["vehiculos"]) == 6, "Se requieren seis registros únicos"
+          assert all(0 < float(x["tna"]) <= 5 for x in d["vehiculos"]), "TNA fuera de rango o inválida"
+          print("OK: schema 6 y seis clases FCI validadas")
+          PY
+
+      - name: Publicar cambios de tasas
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tasas_mercado.json
-          git diff --staged --quiet || git commit -m "Auto: actualización de benchmarks FCI FIBRX [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "No hay cambios nuevos en las tasas."
+          else
+            git commit -m "Auto: actualización validada de seis clases FCI [skip ci]"
+            git push
+          fi
