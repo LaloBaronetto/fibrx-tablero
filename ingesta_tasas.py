@@ -5,7 +5,8 @@
 Publica exclusivamente tasas_mercado.json (schema_version 6).
 No genera auditoria_fci.json, no usa tasas fallback y no cambia clases.
 Si falta una clase, su identidad no coincide o la TNA no tiene unidad validable,
-la ejecución falla antes de reemplazar el JSON publicado.
+la ejecución falla antes de reemplazar el JSON publicado. Se admiten TNA negativas
+cuando la fuente las entrega explícitamente en porcentaje convencional.
 """
 from __future__ import annotations
 import json
@@ -89,14 +90,19 @@ def currency_is_ars(value):
 
 
 def normalize_tna(raw):
-    """La API observada entrega TNA en porcentaje convencional (p.ej. 18.1509).
-    Se convierte a fracción (0.181509). No se adivinan valores <=1.
+    """Convierte la TNA de porcentaje convencional a fracción.
+
+    La API de ArgentinaDatos informa el campo tnaEstimada en porcentaje:
+    18.1509 -> 0.181509 y -17.6921 -> -0.176921.
+    Se admiten valores negativos porque una TNA estimada puede ser negativa.
+    Se rechazan cero y valores entre -1 y 1 porque su unidad sería ambigua
+    frente a una posible fracción ya normalizada.
     """
     try:
         x = float(raw)
     except (TypeError, ValueError):
         return None
-    if 1 < x <= 500:
+    if 1 < x <= 500 or -500 <= x < -1:
         return x / 100.0
     return None
 
@@ -162,6 +168,7 @@ def build_record(fund, cfg, contrast):
         "nombre": fund.get("nombre") or cfg["name"],
         "nombre_api": fund.get("nombre"),
         "tna": tna,
+        "estado_tasa": "NEGATIVA_OBSERVADA" if tna < 0 else "POSITIVA",
         "tipo_indicador": "TNA_ESTIMADA",
         "unidad_original": "porcentaje_convencional",
         "risky": False,
@@ -339,7 +346,12 @@ def main():
     # Final structural checks before atomic replacement.
     required = {x["id"] for x in TARGETS}
     actual = {x.get("id") for x in data["vehiculos"]}
-    if actual != required or any(not (0 < float(x["tna"]) <= 5) for x in rows):
+    # Una TNA negativa es válida si viene del campo tnaEstimada y su unidad
+    # porcentual fue reconocida por normalize_tna(). Se conserva su signo.
+    if actual != required or any(
+        float(x["tna"]) == 0 or not (-5 <= float(x["tna"]) <= 5)
+        for x in rows
+    ):
         raise RuntimeError("Validación final del esquema 6 fallida; se conserva el JSON anterior.")
     atomic_write(OUTPUT, data)
     print(f"[OK] Publicado {OUTPUT}: schema 6, {len(rows)}/6 clases FCI y {len(on_rows)} ON configuradas ({sum(1 for x in on_rows if x['estado_dato_mercado']=='COTIZACION_RECIBIDA')} con cotización recibida). No se genera auditoria_fci.json.")
