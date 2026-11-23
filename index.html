@@ -96,6 +96,19 @@ th{color:var(--texto-dim);font-weight:600;font-size:.78rem;text-transform:upperc
 @media(max-width:640px){.fci-card .fci-datos{grid-template-columns:1fr 1fr}}
 
 
+
+/* Tarjetas FCI: presentación breve orientada al inversor. */
+.fci-card .fci-main-metric{padding:12px 0 10px;border-top:1px solid var(--borde);border-bottom:1px solid var(--borde);margin:8px 0 10px}
+.fci-card .fci-kicker{display:block;color:var(--texto-dim);font-size:.76rem;margin-bottom:2px}
+.fci-card .fci-main-metric .fci-nota{margin-top:7px;font-size:.78rem;line-height:1.45}
+.fci-rendimientos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.fci-rendimiento{background:#111b24;border:1px solid var(--borde);border-radius:8px;padding:9px 7px;min-width:0}
+.fci-rendimiento span{display:block;color:var(--texto-dim);font-size:.72rem}
+.fci-rendimiento strong{display:block;margin-top:3px;font-size:.93rem;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.fci-pie{display:flex;gap:6px 12px;flex-wrap:wrap;color:var(--texto-dim);font-size:.76rem;margin-top:10px}
+.fci-fuente{margin-top:10px;padding-top:8px;border-top:1px solid var(--borde);color:var(--texto-dim);font-size:.7rem}
+@media(max-width:640px){.fci-rendimientos{gap:5px}.fci-rendimiento{padding:8px 5px}.fci-rendimiento strong{font-size:.82rem}}
+
 /* ---------- Jerarquía visual, responsive y accesibilidad ---------- */
 :root{--fondo:#101820;--tarjeta:#18232d;--texto:#f2f5f7;--texto-dim:#b3bec8;--borde:#354553;--azul:#367fc4;--verde:#238b60}
 .skip-link{position:absolute;left:-9999px;top:8px;background:#fff;color:#111;padding:10px 14px;z-index:1000;border-radius:6px}
@@ -163,7 +176,32 @@ button.primario{width:auto;min-width:min(100%,260px);padding:12px 20px;backgroun
 .pill-filtro{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .pill-filtro button{width:auto;padding:6px 12px;font-size:.82rem}
 #seccionEtapas h4{font-size:.94rem;margin:14px 0 6px;color:#cfd6de}
+.carga-json-manual input{max-width:100%}
 @media(max-width:560px){.acciones-etapa button{width:100%}.botones-decision{grid-template-columns:1fr}}
+
+
+/* FIBRX — tarjetas FCI simplificadas para el usuario final */
+.fci-card{display:flex;flex-direction:column;gap:12px;min-width:0}
+.fci-card .fci-head{align-items:flex-start}
+.fci-card .fci-head h3{font-size:1rem;line-height:1.35;max-width:72%}
+.fci-card .badge{flex:0 0 auto;margin:0;white-space:normal;text-align:center}
+.fci-card .fci-main-metric{padding:12px 0 10px;border-top:1px solid var(--borde);border-bottom:1px solid var(--borde)}
+.fci-card .fci-kicker{display:block;color:var(--texto-dim);font-size:.76rem;margin-bottom:2px}
+.fci-card .fci-tna{display:block;font-size:1.8rem;line-height:1.2;font-weight:800;color:#83d9aa;font-variant-numeric:tabular-nums}
+.fci-card .fci-main-metric .fci-nota{margin-top:7px;font-size:.78rem;line-height:1.45}
+.fci-rendimientos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fci-rendimiento{background:#111b24;border:1px solid var(--borde);border-radius:8px;padding:9px 7px;min-width:0}
+.fci-rendimiento span{display:block;color:var(--texto-dim);font-size:.72rem}
+.fci-rendimiento strong{display:block;margin-top:3px;font-size:.93rem;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.fci-pie{display:flex;gap:6px 12px;flex-wrap:wrap;color:var(--texto-dim);font-size:.76rem}
+.fci-fuente{margin-top:auto;padding-top:8px;border-top:1px solid var(--borde);color:var(--texto-dim);font-size:.7rem}
+@media(max-width:420px){
+  .fci-card .fci-head{flex-direction:column}
+  .fci-card .fci-head h3{max-width:100%}
+  .fci-rendimientos{gap:5px}
+  .fci-rendimiento{padding:8px 5px}
+  .fci-rendimiento strong{font-size:.82rem}
+}
 
 </style>
 </head>
@@ -185,7 +223,7 @@ button.primario{width:auto;min-width:min(100%,260px);padding:12px 20px;backgroun
 
 <button type="button" aria-pressed="true" class="btn-modo activo" id="btnModoTodo" onclick="cambiarModo('TODO')">
 
-📚 Experiencia completa
+📚 Todo en una vista (Boceto)
 
 <small>Etapas educativas + Simulador completo</small>
 
@@ -420,12 +458,11 @@ Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b
 
 <!-- ============ FASE 3: RESULTADOS ============ -->
 <section id="resultados" class="resultados" style="display:none" aria-live="polite" aria-labelledby="tituloResultados">
-  <div class="section-intro"><span class="eyebrow">PASO 2 · COMPARACIÓN</span><h2 id="tituloResultados">Tus escenarios</h2><p class="dim">Los importes son estimaciones bajo los supuestos indicados; no representan rendimientos garantizados. En Plan B se comparan las clases FCI disponibles individualmente, sin mezclar clases ni reemplazar datos faltantes.</p></div>
+  <div class="section-intro"><span class="eyebrow">PASO 2 · COMPARACIÓN</span><h2 id="tituloResultados">Tus escenarios</h2><p class="dim">Los importes son estimaciones bajo los supuestos indicados; no representan rendimientos garantizados.</p></div>
   <h2>Opción A · Realizar la compra</h2>
   <div class="grid" id="zonaGastar"></div>
 
-  <h2>Plan B · Comparación de FCI en pesos (escenario estimado, no garantizado)</h2>
-  <p class="dim" id="estadoComparacionFci">Esperando la carga y validación de las seis clases del catálogo.</p>
+  <h2>Plan B · FCI en pesos (escenario estimado, no garantizado)</h2>
   <div class="grid" id="zonaSeguro"></div>
 
   <h2>Escenario de riesgo · CEDEAR SPY (ilustrativo)</h2>
@@ -446,11 +483,10 @@ Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b
 <!-- ============ MERCADO: FCI OBSERVADOS ============ -->
 <section class="panel fci-panel" aria-labelledby="tituloFci">
   <h2 id="tituloFci" style="margin-top:0">Fondos comunes de inversión — datos observados</h2>
-  <p class="dim">Información publicada por ArgentinaDatos para cada clase individual. Los datos de esta sección son descriptivos; solo se usan en los cálculos cuando la TNA está disponible y validada. Cada FCI tiene riesgos, condiciones y plazos propios; no es un depósito garantizado.</p>
-  <div id="estadoCatalogoFci" class="status-bar" style="margin-top:10px">Cargando catálogo de FCI...</div>
-  <p class="dim" style="margin:8px 0 12px">El catálogo se actualiza automáticamente desde la fuente pública del proyecto. No necesitás seleccionar ni cargar archivos.</p>
+  <p class="dim">Consultá las tasas y los rendimientos recientes de cada clase. La información se actualiza automáticamente y no representa una garantía de rentabilidad.</p>
+  <div id="estadoCatalogoFci" class="status-bar" style="margin-top:10px">Actualizando información de los fondos...</div>
   <div id="catalogoFci" class="fci-grid" aria-live="polite"></div>
-  <p class="fci-foot">La TNA estimada y los rendimientos históricos no garantizan resultados futuros. Los honorarios informados se muestran como dato del fondo y no se descuentan nuevamente en el simulador para evitar una posible doble contabilización de gastos ya reflejados en el valor de cuotaparte.</p>
+  <p class="fci-foot">Datos orientativos de la última actualización disponible. Las tasas y rendimientos pueden cambiar y no garantizan resultados futuros. Verificá condiciones, riesgos y plazos de rescate antes de invertir.</p>
 </section>
 
 
@@ -1071,7 +1107,7 @@ const tbody = document.getElementById("cuerpoDeudas");
 
 if(!lista.length){
 
-tbody.innerHTML = `<tr><td colspan="4" class="dim">Todavía no agregaste deudas a tu lista.</td></tr>`;
+tbody.innerHTML = `<tr><td colspan="4" class="dim">Todavía no cargaste deudas en este boceto.</td></tr>`;
 
 return;
 
@@ -1305,12 +1341,8 @@ function calcUnico(pv,n,v){
 
 // ---------- Orquestador principal ----------
 let ultimaIntencion = null;
-// La comparación espera a que termine la lectura del catálogo, incluso si el
-// usuario pulsa el botón inmediatamente después de abrir la página.
-let promesaCargaTasas = Promise.resolve();
 
-async function ejecutar(){
-  await promesaCargaTasas;
+function ejecutar(){
   const item  = document.getElementById("item").value.trim() || "Sin nombre";
   const tipo  = document.getElementById("tipo").value;
   const monto = parseFloat(document.getElementById("monto").value);
@@ -1372,8 +1404,7 @@ function tarjetaSeguro(v,r){
   const badge = r.pierdeInflacion
     ? `<span class="badge pierde">Estimación por debajo de la inflación supuesta (${v.cur})</span>`
     : `<span class="badge ok">Estimación por encima de la inflación supuesta (${v.cur})</span>`;
-  return `<div class="tarjeta seguro"><h3>${escHTML(v.nombre)}</h3>
-    <div class="dim">TNA observada: <b>${porcentajeFraccion(v.tna)}</b> · Fecha: ${fechaCorta(v.fecha_observacion)}</div>
+  return `<div class="tarjeta seguro"><h3>${v.nombre}</h3>
     <div class="dim">TEA equivalente estimada a partir de TNA/12. No es una tasa garantizada.</div>
     <div class="grande moneda" style="color:var(--verde)">${(r.tea*100).toFixed(1)}%</div>
     <div class="dim">Valor futuro neto (nominal): <b class="moneda">${fmt(r.fvNominal)}</b></div>
@@ -1384,7 +1415,6 @@ function tarjetaSeguro(v,r){
 function tarjetaSeguroUnico(v,u,monto){
   const pierde=teaNeta(v)<Math.pow(1+INFLACION_MENSUAL[v.cur],12)-1;
   return `<div class="tarjeta seguro"><h3>${escHTML(v.nombre)}</h3>
-    <div class="dim">TNA observada: <b>${porcentajeFraccion(v.tna)}</b> · Fecha: ${fechaCorta(v.fecha_observacion)}</div>
     <div class="dim">Si pagás ${fmt(monto)} hoy, el costo de oportunidad estimado es:</div>
     <div class="grande moneda" style="color:var(--rojo)">${fmt(u.dejaDeRendir)}</div>
     <div class="dim">Valor futuro nominal estimado: <b class="moneda">${fmt(u.fvNeto)}</b></div>
@@ -1503,6 +1533,19 @@ const fmtDato = value => {
   return value!==null && value!==undefined && value!=="" && Number.isFinite(n)
     ? n.toLocaleString("es-AR",{maximumFractionDigits:6}) : mostrar(value);
 };
+function nombreVisibleFCI(v,cfg){
+  const candidatos=[v?.nombre,v?.nombre_api,cfg?.nombre];
+  for(const candidato of candidatos){
+    if(typeof candidato!=="string")continue;
+    const limpio=candidato.trim();
+    if(!limpio)continue;
+    // Evita mostrar placeholders o nombres técnicos provenientes de la API.
+    if(/^[A-Z0-9_]+$/.test(limpio))continue;
+    if(/NOMBRE|ADMINISTRADORA_MONEDA|API|CLASE_/.test(limpio))continue;
+    return limpio;
+  }
+  return "Fondo común de inversión";
+}
 function renderCatalogoFCI(data){
   const host=document.getElementById("catalogoFci");
   const externos=new Map((Array.isArray(data?.vehiculos)?data.vehiculos:[]).map(v=>[v.id,v]));
@@ -1510,73 +1553,53 @@ function renderCatalogoFCI(data){
     const v=externos.get(cfg.id);
     if(!v){
       return `<article class="fci-card no-data">
-        <div class="fci-head"><h3>${escHTML(cfg.nombre)}</h3><span class="badge no-elegible">Sin dato publicado</span></div>
-        <div class="fci-meta">ID esperado: ${escHTML(cfg.id)}</div>
-        <p class="fci-nota">Esta clase no está presente en el catálogo recibido. No se sustituye por otra clase ni por una tasa de respaldo.</p>
+        <div class="fci-head"><h3>${escHTML(cfg.nombre)}</h3><span class="badge no-elegible">Sin datos</span></div>
+        <p class="fci-nota">Esta clase no tiene información disponible en la última actualización.</p>
       </article>`;
     }
-    const contraste=v.contraste_mercado_dinero;
-    const contrasteTxt=contraste
-      ? (typeof contraste==="object" ? (contraste.estado || contraste.resultado || "Contraste informado") : String(contraste))
-      : "Sin contraste informado";
-    const fuentesTxt=Array.isArray(v.fuentes) ? v.fuentes.join(" · ") : mostrar(v.fuentes);
-    const cafci=v.referencia_cafci;
-    const cafciTxt=cafci && typeof cafci==="object"
-      ? `Fondo ${mostrar(cafci.fondo_id ?? cafci.fondo)} / Clase ${mostrar(cafci.clase_id ?? cafci.clase)}`
-      : mostrar(cafci);
-    const validacion=mostrar(v.nivel_validacion || v.estado_dato);
-    const returns = [
-      ["7 días", porcentajePuntos(v.retorno_7d)],
-      ["30 días", porcentajePuntos(v.retorno_30d)],
-      ["90 días", porcentajePuntos(v.retorno_90d)]
-    ];
-    const minimoLabel = v.inversion_minima_informada!=null ? `${fmtDato(v.inversion_minima_informada)} (dato informado por fuente; confirmar mínimo operativo)` : "No informado";
-    const details=[
-      ["Fecha observada",fechaCorta(v.fecha_observacion)],
-      ["Período TNA",mostrar(v.periodo_tna)],
-      ["Base TNA",v.dias_base_tna!=null?`${v.dias_base_tna} días`:"No informada"],
-      ["Valor cuotaparte",fmtDato(v.valor_cuotaparte)],
-      ["Administradora",mostrar(v.administradora)],
-      ["Depositario",mostrar(v.depositaria)],
-      ["Moneda",mostrar(v.moneda_fondo)],
-      ["Liquidación",v.plazo_liquidacion_dias!=null?`${v.plazo_liquidacion_dias} día(s)`:"No informada"],
-      ["Mínimo informado",minimoLabel],
-      ["Honorarios informados",mostrar(v.honorarios_informados)],
-      ["Retorno 7 días",returns[0][1]],
-      ["Retorno 30 días",returns[1][1]],
-      ["Retorno 90 días",returns[2][1]]
-    ];
+
     const tna=Number(v.tna);
-    const tnaTxt=Number.isFinite(tna)&&tna>0 ? porcentajeFraccion(tna) : "No disponible";
+    const tnaDisponible=Number.isFinite(tna)&&tna>0&&tna<=5;
+    const tnaTxt=tnaDisponible?porcentajeFraccion(tna):"No disponible";
+    const rendimientos=[
+      ["7 días",v.retorno_7d],
+      ["30 días",v.retorno_30d],
+      ["90 días",v.retorno_90d]
+    ].filter(([,valor])=>valor!==null&&valor!==undefined&&valor!==""&&Number.isFinite(Number(valor)));
+    const fecha=fechaCorta(v.fecha_observacion);
+    const moneda=v.moneda_fondo&&v.moneda_fondo!=="No informado"?v.moneda_fondo:"";
+    const rescate=v.plazo_liquidacion_dias!=null?`${v.plazo_liquidacion_dias} día(s)`:"";
+    const nombre=nombreVisibleFCI(v,cfg);
+
     return `<article class="fci-card">
-      <div class="fci-head"><h3>${escHTML(v.nombre || v.nombre_api || cfg.nombre)}</h3><span class="badge ok">${escHTML(validacion)}</span></div>
-      <div class="fci-meta">ID: ${escHTML(v.id)} · Fuente: ArgentinaDatos</div>
-      <div class="fci-tna">${escHTML(tnaTxt)}</div>
-      <div class="fci-meta">${escHTML(mostrar(v.tipo_indicador))} · Unidad original: ${escHTML(mostrar(v.unidad_original))}</div>
-      <div class="fci-datos">${details.map(([k,val])=>`<div class="fci-dato">${escHTML(k)}<b>${escHTML(val)}</b></div>`).join("")}</div>
-      <div class="fci-nota">Fuente(s): ${escHTML(fuentesTxt)}<br>Referencia CAFCI: ${escHTML(cafciTxt)}<br>fondoId API: ${escHTML(mostrar(v.fondoId))} · claseId API: ${escHTML(mostrar(v.claseId))} · código CNV: ${escHTML(mostrar(v.codigoCNV))}<br>Contraste mercado dinero: ${escHTML(contrasteTxt)}</div>
+      <div class="fci-head">
+        <h3>${escHTML(nombre)}</h3>
+        <span class="badge ${tnaDisponible?"ok":"no-elegible"}">${tnaDisponible?"TNA disponible":"Tasa no disponible"}</span>
+      </div>
+      <div class="fci-main-metric">
+        <span class="fci-kicker">TNA estimada</span>
+        <strong class="fci-tna">${escHTML(tnaTxt)}</strong>
+        ${!tnaDisponible?`<p class="fci-nota">La fuente no informa una TNA válida para esta clase. No se reemplaza por la tasa de otro fondo.</p>`:""}
+      </div>
+      ${rendimientos.length?`<div class="fci-rendimientos" aria-label="Rendimientos históricos">
+        ${rendimientos.map(([periodo,valor])=>`<div class="fci-rendimiento"><span>${escHTML(periodo)}</span><strong>${escHTML(porcentajePuntos(valor))}</strong></div>`).join("")}
+      </div>`:""}
+      <div class="fci-pie">
+        ${moneda?`<span>${escHTML(moneda)}</span>`:""}
+        ${rescate?`<span>Rescate: ${escHTML(rescate)}</span>`:""}
+        <span>Actualizado: ${escHTML(fecha)}</span>
+      </div>
+      <div class="fci-fuente">Fuente: ArgentinaDatos</div>
     </article>`;
   }).join("");
+
   const publicados=FCI_OBJETIVO.filter(x=>externos.has(x.id)).length;
+  const conTasa=(Array.isArray(data?.vehiculos)?data.vehiculos:[])
+    .filter(v=>Number.isFinite(Number(v.tna))&&Number(v.tna)>0&&Number(v.tna)<=5).length;
   document.getElementById("estadoCatalogoFci").textContent=
-    `${publicados} de ${FCI_OBJETIVO.length} clases publicadas · ${mostrar(data?.estado_global)} · Fuente: ArgentinaDatos`;
+    `${publicados} de ${FCI_OBJETIVO.length} fondos con datos · ${conTasa} con TNA disponible · Fuente: ArgentinaDatos`;
 }
-function esMonedaARS(valor){
-  if(valor===null || valor===undefined) return false;
-  const moneda=String(valor).trim().normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .toUpperCase().replace(/\s+/g," ");
-  return [
-    "ARS",
-    "PESO ARGENTINO",
-    "PESOS ARGENTINOS",
-    "PESO",
-    "PESOS",
-    "ARGENTINE PESO",
-    "ARGENTINE PESOS"
-  ].includes(moneda);
-}
-function validarCatalogoTasas(data){
+async function validarCatalogoTasas(data){
   if(!data||data.estado_global!=="DATOS_ARGENTINADATOS_UNA_FUENTE"||!Array.isArray(data.vehiculos))
     throw new Error("El JSON no tiene el estado o la estructura esperada.");
   const ids=new Set();
@@ -1592,8 +1615,6 @@ function mostrarErrorTasas(error){
   document.getElementById("origenTasas").textContent="Sin tasas FCI utilizables — no se aplican tasas de respaldo";
   document.getElementById("fechaTasas").textContent="No hay actualización verificada";
   document.getElementById("estadoCatalogoFci").textContent="No se pudo cargar o validar el catálogo FCI.";
-  const estadoComparacion=document.getElementById("estadoComparacionFci");
-  if(estadoComparacion) estadoComparacion.textContent="No hay clases FCI con datos validados para comparar. Se conserva únicamente el escenario de riesgo ilustrativo.";
   document.getElementById("catalogoFci").innerHTML=FCI_OBJETIVO.map(cfg=>
     `<article class="fci-card no-data"><h3>${escHTML(cfg.nombre)}</h3><span class="badge no-elegible">No disponible</span><p class="fci-nota">${escHTML(error?.message||"Error de lectura")}</p></article>`
   ).join("");
@@ -1609,11 +1630,7 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
     if(!ext)continue;
     const tna=Number(ext.tna);
     if(!Number.isFinite(tna)||tna<=0||tna>5)continue; // El JSON v6 expresa TNA como fracción.
-    // ArgentinaDatos informa la moneda como "Peso Argentino", no siempre
-    // con el código ISO "ARS". Si no hay una moneda reconocida, se excluye.
-    // La fuente puede informar la denominación textual y el código ISO en campos separados.
-    // Se acepta cualquiera de los dos si identifica explícitamente pesos argentinos.
-    if(!esMonedaARS(ext.moneda_fondo) && !esMonedaARS(ext.cur))continue;
+    if(String(ext.moneda_fondo||"ARS").toUpperCase()!=="ARS")continue;
     const local=locales.get(cfg.id)||{};
     actualizados.push({...local,...ext,
       nombre:ext.nombre||ext.nombre_api||local.nombre||cfg.nombre,
@@ -1624,10 +1641,6 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
     });
   }
   VEHICULOS=[...actualizados,...VEHICULOS.filter(v=>v.risky)];
-  const estadoComparacion=document.getElementById("estadoComparacionFci");
-  if(estadoComparacion){
-    estadoComparacion.textContent = `${actualizados.length} de ${FCI_OBJETIVO.length} clases FCI con TNA ARS validada para comparar. Las clases faltantes se muestran como no disponibles; no se sustituyen por otras.`;
-  }
   document.getElementById("origenTasas").textContent=origen+" — una fuente pública; clases FCI individuales";
   const fecha=data.fecha_datos_fuente||data.actualizado_el||"Fecha no informada";
   const el=document.getElementById("fechaTasas");el.textContent=fecha;
@@ -1641,13 +1654,23 @@ async function cargarTasasDelJSON(){
     aplicarDatosTasas(await res.json(),"ArgentinaDatos");
   }catch(e){mostrarErrorTasas(e);}
 }
+function cargarTasasDesdeArchivo(ev){
+  const archivo=ev.target.files&&ev.target.files[0];if(!archivo)return;
+  const lector=new FileReader();
+  lector.onload=()=>{
+    try{aplicarDatosTasas(JSON.parse(String(lector.result||"")),"Archivo local · ArgentinaDatos");}
+    catch(e){mostrarErrorTasas(e);alert("No se pudo cargar el JSON: "+(e.message||"archivo inválido"));}
+  };
+  lector.onerror=()=>{const e=new Error("El navegador no pudo leer el archivo seleccionado.");mostrarErrorTasas(e);alert(e.message);};
+  lector.readAsText(archivo);
+}
 
 renderEtapasNav();
 renderEtapaActiva();
 calcPMV();
 renderDeudas();
 cargarPlanMov();
-promesaCargaTasas = cargarTasasDelJSON();
+cargarTasasDelJSON();
 renderRegistro();
 
 
