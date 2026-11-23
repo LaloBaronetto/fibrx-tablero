@@ -1,6 +1,6 @@
 {
   "schema_version": 6,
-  "actualizado_el": "2026-11-23T13:53:06.055142+00:00",
+  "actualizado_el": "2026-11-23T15:12:16.956688+00:00",
   "fecha_datos_fuente": "2026-11-20T23:52:16.000Z",
   "estado_global": "DATOS_ARGENTINADATOS_UNA_FUENTE",
   "fuentes": [
@@ -28,6 +28,7 @@
     "endpoint": "/api/bonos",
     "url": "https://compararfondos.com.ar/api/bonos",
     "origen_de_datos": "BYMA (precios con rezago aproximado de 5 minutos) y flujos cargados/verificados por el proveedor",
+    "criterio_moneda": "Solo especies D con tcType=MEP; se excluyen especies O/ARS y C/CCL.",
     "atribucion": "Al publicar estos datos debe mencionarse compararfondos.com.ar.",
     "error_consulta": null,
     "cantidad_instrumentos_recibidos": 340,
@@ -73,7 +74,7 @@
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
       "nivel_validacion": "TICKER_EXACTO",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
       "ticker": "YM34D",
@@ -166,7 +167,7 @@
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
       "nivel_validacion": "TICKER_EXACTO",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
       "ticker": "VSCVD",
@@ -255,14 +256,15 @@
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
       "nivel_validacion": "TICKER_EXACTO",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
-      "ticker": "AEC3O",
-      "emisor": "AES Argentina Generación",
+      "ticker": "AEC3D",
+      "ticker_especie_original": "AEC3O",
+      "emisor": "AES Argentina Generación S.A.",
       "nombre": "AES Argentina Generación Clase 3",
-      "isin": null,
-      "moneda_objetivo": "Especie O (validar moneda de liquidación)",
+      "isin": "AR0382592001",
+      "moneda_objetivo": "USD MEP",
       "ley": null,
       "vencimiento": "2028-08-06",
       "tasa_cupon_anual": null,
@@ -270,20 +272,49 @@
       "estructura": null,
       "frecuencia": "Semestral (fechas observadas; contrato a validar)",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "estado_dato_mercado": "SIN_COTIZACION_EN_FUENTE",
+      "precio": 99,
+      "tir": null,
+      "paridad": 97.1,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-02-06",
+          "monto": 3.26
+        },
+        {
+          "fecha": "2027-08-06",
+          "monto": 3.2099999999999995
+        },
+        {
+          "fecha": "2028-02-06",
+          "monto": 3.26
+        },
+        {
+          "fecha": "2028-08-06",
+          "monto": 103.23
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "fecha_rueda": "2026-11-20",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
-      "nivel_validacion": "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
-      "ticker": "IRCPO",
+      "ticker": "IRCPD",
+      "ticker_especie_original": "IRCPO",
       "emisor": "IRSA Inversiones y Representaciones S.A.",
       "nombre": "IRSA 8% 2035",
       "isin": null,
-      "moneda_objetivo": "Especie O (validar moneda de liquidación)",
+      "moneda_objetivo": "USD MEP",
       "ley": null,
       "vencimiento": "2035-03-31",
       "tasa_cupon_anual": 8.0,
@@ -291,41 +322,223 @@
       "estructura": "Amortizable (por validar porcentajes)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "estado_dato_mercado": "SIN_COTIZACION_EN_FUENTE",
+      "precio": 101.1,
+      "tir": null,
+      "paridad": 99.92,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2027-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2028-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2028-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2029-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2029-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2030-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2030-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2031-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2031-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2032-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2032-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2033-03-31",
+          "monto": 37
+        },
+        {
+          "fecha": "2033-09-30",
+          "monto": 2.68
+        },
+        {
+          "fecha": "2034-03-31",
+          "monto": 35.68
+        },
+        {
+          "fecha": "2034-09-30",
+          "monto": 1.3599999999999999
+        },
+        {
+          "fecha": "2035-03-31",
+          "monto": 35.36
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "fecha_rueda": "2026-11-20",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
-      "nivel_validacion": "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
-      "ticker": "MGCRO",
+      "ticker": "MGCRD",
+      "ticker_especie_original": "MGCRO",
       "emisor": "Pampa Energía S.A.",
       "nombre": "Pampa Energía 7,75% 2037",
-      "isin": null,
-      "moneda_objetivo": "Especie O (validar moneda de liquidación)",
+      "isin": "USP7464EAY25",
+      "moneda_objetivo": "USD MEP",
       "ley": null,
-      "vencimiento": "2037-11-14",
+      "vencimiento": "2037-11-16",
       "tasa_cupon_anual": 7.75,
       "tipo_tasa": "Fija (según descripción aportada)",
       "estructura": "Bullet (pendiente de prospecto)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "estado_dato_mercado": "SIN_COTIZACION_EN_FUENTE",
+      "precio": 95,
+      "tir": null,
+      "paridad": 94.77,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2027-11-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2028-05-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2028-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2029-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2029-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2030-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2030-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2031-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2031-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2032-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2032-11-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2033-05-16",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2033-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2034-05-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2034-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2035-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2035-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2036-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2036-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2037-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2037-11-16",
+          "monto": 103.875
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "fecha_rueda": "2026-11-20",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
-      "nivel_validacion": "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
-      "ticker": "PQCSO",
+      "ticker": "PQCSD",
+      "ticker_especie_original": "PQCSO",
       "emisor": "Petroquímica Comodoro Rivadavia S.A.",
       "nombre": "PCR Clase S 2031",
-      "isin": null,
-      "moneda_objetivo": "Especie O (validar moneda de liquidación)",
+      "isin": "AR0309447628",
+      "moneda_objetivo": "USD MEP",
       "ley": null,
       "vencimiento": "2031-02-17",
       "tasa_cupon_anual": null,
@@ -333,20 +546,69 @@
       "estructura": "Bullet (pendiente de prospecto)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "estado_dato_mercado": "SIN_COTIZACION_EN_FUENTE",
+      "precio": 95.5,
+      "tir": null,
+      "paridad": 93.48,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2027-08-17",
+          "monto": 3.9699999999999998
+        },
+        {
+          "fecha": "2028-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2028-08-17",
+          "monto": 3.9899999999999998
+        },
+        {
+          "fecha": "2029-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2029-08-17",
+          "monto": 3.9699999999999998
+        },
+        {
+          "fecha": "2030-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2030-08-17",
+          "monto": 3.9699999999999998
+        },
+        {
+          "fecha": "2031-02-17",
+          "monto": 104.03
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "fecha_rueda": "2026-11-20",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
-      "nivel_validacion": "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
-      "ticker": "TLCPO",
+      "ticker": "TLCPD",
+      "ticker_especie_original": "TLCPO",
       "emisor": "Telecom Argentina S.A.",
       "nombre": "Telecom Argentina 9,25% 2033",
-      "isin": null,
-      "moneda_objetivo": "Especie O (validar moneda de liquidación)",
+      "isin": "USP9028NCA74",
+      "moneda_objetivo": "USD MEP",
       "ley": null,
       "vencimiento": "2033-05-28",
       "tasa_cupon_anual": 9.25,
@@ -354,20 +616,89 @@
       "estructura": "Amortizable (por validar porcentajes)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "estado_dato_mercado": "SIN_COTIZACION_EN_FUENTE",
+      "precio": 104.35,
+      "tir": null,
+      "paridad": 99.84,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2026-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2027-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2027-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2028-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2028-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2029-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2029-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2030-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2030-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2031-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2031-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2032-05-28",
+          "monto": 54.625
+        },
+        {
+          "fecha": "2032-11-28",
+          "monto": 2.3125
+        },
+        {
+          "fecha": "2033-05-28",
+          "monto": 52.31249999999999
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "fecha_rueda": "2026-11-20",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
-      "nivel_validacion": "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
     {
-      "ticker": "VSCXO",
+      "ticker": "VSCXD",
+      "ticker_especie_original": "VSCXO",
       "emisor": "Vista Energy Argentina S.A.U.",
       "nombre": "Vista Energy 7,875% 2038",
-      "isin": null,
-      "moneda_objetivo": "Especie O (validar moneda de liquidación)",
+      "isin": "USP9659RAD00",
+      "moneda_objetivo": "USD MEP",
       "ley": null,
       "vencimiento": "2038-04-08",
       "tasa_cupon_anual": 7.875,
@@ -375,13 +706,117 @@
       "estructura": "Amortizable (por validar porcentajes)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "estado_dato_mercado": "SIN_COTIZACION_EN_FUENTE",
+      "precio": 96.7,
+      "tir": null,
+      "paridad": 95.76,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2027-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2028-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2028-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2029-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2029-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2030-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2030-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2031-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2031-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2032-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2032-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2033-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2033-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2034-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2034-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2035-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2035-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2036-04-08",
+          "monto": 36.9375
+        },
+        {
+          "fecha": "2036-10-08",
+          "monto": 2.6381
+        },
+        {
+          "fecha": "2037-04-08",
+          "monto": 35.6381
+        },
+        {
+          "fecha": "2037-10-08",
+          "monto": 1.3388
+        },
+        {
+          "fecha": "2038-04-08",
+          "monto": 35.3387
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "fecha_rueda": "2026-11-20",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
       "fecha_cotizacion": "2026-11-20",
-      "nivel_validacion": "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-      "advertencia": "La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     }
   ],
   "diagnostico_obligaciones_negociables": {
@@ -400,34 +835,34 @@
       "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     },
-    "AEC3O": {
-      "estado": "SIN_COTIZACION_EN_FUENTE",
-      "coincidencias": 0,
+    "AEC3D": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     },
-    "IRCPO": {
-      "estado": "SIN_COTIZACION_EN_FUENTE",
-      "coincidencias": 0,
+    "IRCPD": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     },
-    "MGCRO": {
-      "estado": "SIN_COTIZACION_EN_FUENTE",
-      "coincidencias": 0,
+    "MGCRD": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     },
-    "PQCSO": {
-      "estado": "SIN_COTIZACION_EN_FUENTE",
-      "coincidencias": 0,
+    "PQCSD": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     },
-    "TLCPO": {
-      "estado": "SIN_COTIZACION_EN_FUENTE",
-      "coincidencias": 0,
+    "TLCPD": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     },
-    "VSCXO": {
-      "estado": "SIN_COTIZACION_EN_FUENTE",
-      "coincidencias": 0,
+    "VSCXD": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
       "fecha_rueda": "2026-11-20"
     }
   },
