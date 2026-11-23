@@ -43,12 +43,12 @@ ON_TARGETS = [
     {"ticker":"CP36D", "emisor":"Compañía General de Combustibles S.A.", "nombre":"CGC Clase 36", "isin":"AR0015464982", "moneda_objetivo":"USD MEP", "ley":"Argentina", "vencimiento":"2027-10-10", "tasa_cupon_anual":6.50, "tipo_tasa":"Fija", "estructura":"Bullet", "frecuencia":"Semestral", "fuente_contractual":"Datos de Balanz informados por el usuario; corte 2026-11-20"},
     {"ticker":"YM34D", "emisor":"YPF S.A.", "nombre":"YPF Clase XXXIV", "isin":"USP989MJBY67", "moneda_objetivo":"USD MEP", "ley":"Nueva York", "vencimiento":"2034-01-17", "tasa_cupon_anual":8.25, "tipo_tasa":"Fija", "estructura":"Amortizable", "frecuencia":"Semestral", "fuente_contractual":"Datos de Balanz informados por el usuario; corte 2026-11-20"},
     {"ticker":"VSCVD", "emisor":"Vista Energy Argentina S.A.U.", "nombre":"Vista Energy Clase XXIX", "isin":"USP9659RAB44", "moneda_objetivo":"USD MEP", "ley":"Nueva York", "vencimiento":"2033-06-10", "tasa_cupon_anual":8.50, "tipo_tasa":"Fija", "estructura":"Amortizable", "frecuencia":"Semestral", "fuente_contractual":"Datos de Balanz informados por el usuario; corte 2026-11-20"},
-    {"ticker":"AEC3O", "emisor":"AES Argentina Generación", "nombre":"AES Argentina Generación Clase 3", "isin":None, "moneda_objetivo":"Especie O (validar moneda de liquidación)", "ley":None, "vencimiento":"2028-08-06", "tasa_cupon_anual":None, "tipo_tasa":None, "estructura":None, "frecuencia":"Semestral (fechas observadas; contrato a validar)", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
-    {"ticker":"IRCPO", "emisor":"IRSA Inversiones y Representaciones S.A.", "nombre":"IRSA 8% 2035", "isin":None, "moneda_objetivo":"Especie O (validar moneda de liquidación)", "ley":None, "vencimiento":"2035-03-31", "tasa_cupon_anual":8.00, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
-    {"ticker":"MGCRO", "emisor":"Pampa Energía S.A.", "nombre":"Pampa Energía 7,75% 2037", "isin":None, "moneda_objetivo":"Especie O (validar moneda de liquidación)", "ley":None, "vencimiento":"2037-11-14", "tasa_cupon_anual":7.75, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Bullet (pendiente de prospecto)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
-    {"ticker":"PQCSO", "emisor":"Petroquímica Comodoro Rivadavia S.A.", "nombre":"PCR Clase S 2031", "isin":None, "moneda_objetivo":"Especie O (validar moneda de liquidación)", "ley":None, "vencimiento":"2031-02-17", "tasa_cupon_anual":None, "tipo_tasa":None, "estructura":"Bullet (pendiente de prospecto)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
-    {"ticker":"TLCPO", "emisor":"Telecom Argentina S.A.", "nombre":"Telecom Argentina 9,25% 2033", "isin":None, "moneda_objetivo":"Especie O (validar moneda de liquidación)", "ley":None, "vencimiento":"2033-05-28", "tasa_cupon_anual":9.25, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
-    {"ticker":"VSCXO", "emisor":"Vista Energy Argentina S.A.U.", "nombre":"Vista Energy 7,875% 2038", "isin":None, "moneda_objetivo":"Especie O (validar moneda de liquidación)", "ley":None, "vencimiento":"2038-04-08", "tasa_cupon_anual":7.875, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"AEC3D", "ticker_especie_original":"AEC3O", "emisor":"AES Argentina Generación S.A.", "nombre":"AES Argentina Generación Clase 3", "isin":"AR0382592001", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2028-08-06", "tasa_cupon_anual":None, "tipo_tasa":None, "estructura":None, "frecuencia":"Semestral (fechas observadas; contrato a validar)", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"IRCPD", "ticker_especie_original":"IRCPO", "emisor":"IRSA Inversiones y Representaciones S.A.", "nombre":"IRSA 8% 2035", "isin":None, "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2035-03-31", "tasa_cupon_anual":8.00, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"MGCRD", "ticker_especie_original":"MGCRO", "emisor":"Pampa Energía S.A.", "nombre":"Pampa Energía 7,75% 2037", "isin":"USP7464EAY25", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2037-11-14", "tasa_cupon_anual":7.75, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Bullet (pendiente de prospecto)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"PQCSD", "ticker_especie_original":"PQCSO", "emisor":"Petroquímica Comodoro Rivadavia S.A.", "nombre":"PCR Clase S 2031", "isin":"AR0309447628", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2031-02-17", "tasa_cupon_anual":None, "tipo_tasa":None, "estructura":"Bullet (pendiente de prospecto)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"TLCPD", "ticker_especie_original":"TLCPO", "emisor":"Telecom Argentina S.A.", "nombre":"Telecom Argentina 9,25% 2033", "isin":"USP9028NCA74", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2033-05-28", "tasa_cupon_anual":9.25, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"VSCXD", "ticker_especie_original":"VSCXO", "emisor":"Vista Energy Argentina S.A.U.", "nombre":"Vista Energy 7,875% 2038", "isin":"USP9659RAD00", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2038-04-08", "tasa_cupon_anual":7.875, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
 ]
 
 
@@ -230,6 +230,10 @@ def build_on_records(payload, fetch_error=None):
             status = "TICKER_DUPLICADO_EN_FUENTE"
         elif quote is None:
             status = "SIN_COTIZACION_EN_FUENTE" if not fetch_error else "FUENTE_NO_DISPONIBLE"
+        elif quote.get("tcType") not in (None, "MEP"):
+            status = "ESPECIE_NO_MEP"
+        elif quote.get("tcType") is None:
+            status = "MONEDA_NO_CONFIRMADA_POR_FUENTE"
         elif quote.get("precioStale") is True:
             status = "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA"
         else:
@@ -252,7 +256,7 @@ def build_on_records(payload, fetch_error=None):
                "url_fuente":"https://compararfondos.com.ar/api/bonos",
                "fecha_cotizacion":fecha_rueda,
                "nivel_validacion":"TICKER_EXACTO" if quote else "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
-               "advertencia":"La especie O puede representar cotización en pesos; revisar tcType/moneda antes de comparar con especies D en USD. Flujos solo se publican si la API los devuelve."}
+               "advertencia":"Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."}
         rows.append(row)
         diagnostics[cfg["ticker"]] = {"estado":status, "coincidencias":len(matches), "fecha_rueda":fecha_rueda}
     return rows, diagnostics, len(bonds)
@@ -333,6 +337,7 @@ def main():
         "fuente_obligaciones_negociables": {
             "nombre":"CompararFondos", "endpoint":"/api/bonos",
             "url":BONDS_URL, "origen_de_datos":"BYMA (precios con rezago aproximado de 5 minutos) y flujos cargados/verificados por el proveedor",
+            "criterio_moneda":"Solo especies D con tcType=MEP; se excluyen especies O/ARS y C/CCL.",
             "atribucion":"Al publicar estos datos debe mencionarse compararfondos.com.ar.",
             "error_consulta":bonds_error, "cantidad_instrumentos_recibidos":bonds_count,
             "fecha_rueda":(bonds_payload.get("rueda", {}).get("fechaRueda") if isinstance(bonds_payload, dict) and isinstance(bonds_payload.get("rueda"), dict) else None)
