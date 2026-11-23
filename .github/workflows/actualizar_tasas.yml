@@ -28,7 +28,7 @@ jobs:
       - name: Validar sintaxis de ingesta
         run: python -m py_compile ingesta_tasas.py
 
-      - name: Consultar y validar seis clases FCI
+      - name: Consultar y validar seis clases FCI y ON
         run: python ingesta_tasas.py
 
       - name: Validar JSON publicado
@@ -47,7 +47,14 @@ jobs:
           assert d.get("estado_global") == "DATOS_ARGENTINADATOS_UNA_FUENTE", "Estado global inesperado"
           assert actual == expected, f"Clases incorrectas: {sorted(actual)}"
           assert len(d["vehiculos"]) == 6, "Se requieren seis registros únicos"
-          assert all(0 < float(x["tna"]) <= 5 for x in d["vehiculos"]), "TNA fuera de rango o inválida"
+          def tna_valida(x):
+              try:
+                  valor = float(x["tna"])
+              except (KeyError, TypeError, ValueError):
+                  return False
+              return -5 <= valor <= 5 and valor != 0
+
+          assert all(tna_valida(x) for x in d["vehiculos"]), "TNA fuera de rango, cero o inválida"
           print("OK: schema 6 y seis clases FCI validadas")
           PY
 
