@@ -203,6 +203,29 @@ button.primario{width:auto;min-width:min(100%,260px);padding:12px 20px;backgroun
   .fci-rendimiento strong{font-size:.82rem}
 }
 
+
+
+/* ---------- Panel de datos observados de ON ---------- */
+.on-panel{margin:28px 0}
+.on-panel>h2{color:var(--texto);text-transform:none;letter-spacing:-.02em;font-size:1.4rem}
+.on-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;margin-top:14px}
+.on-card{background:#17232d;border:1px solid var(--borde);border-radius:12px;padding:17px;min-width:0}
+.on-card h3{font-size:1.02rem;line-height:1.35}
+.on-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.on-ticker{font-size:.76rem;color:#8fc4f3;font-weight:800;letter-spacing:.08em}
+.on-precio{margin:14px 0 12px;padding:12px 0;border-top:1px solid var(--borde);border-bottom:1px solid var(--borde)}
+.on-precio strong{display:block;font-size:1.65rem;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.on-metricas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.on-metrica{background:#111b24;border:1px solid var(--borde);border-radius:8px;padding:9px;min-width:0}
+.on-metrica span{display:block;color:var(--texto-dim);font-size:.73rem}
+.on-metrica strong{display:block;margin-top:3px;font-size:1rem;overflow-wrap:anywhere}
+.on-nota{font-size:.77rem;color:var(--texto-dim);margin-top:10px;line-height:1.5;overflow-wrap:anywhere}
+.on-alerta{border-left:3px solid var(--amarillo);padding:8px 10px;background:#20251f;border-radius:0 7px 7px 0;margin-top:9px;font-size:.76rem;color:#e5d7a6}
+.on-fuente{border-top:1px solid var(--borde);padding-top:9px;margin-top:12px;font-size:.7rem;color:var(--texto-dim)}
+.on-foot{font-size:.77rem;color:var(--texto-dim);margin-top:12px;line-height:1.55}
+.on-card.no-data{border-style:dashed}
+@media(max-width:420px){.on-card-head{flex-direction:column}.on-precio strong{font-size:1.4rem}}
+
 </style>
 </head>
 <body>
@@ -487,6 +510,15 @@ Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b
   <div id="estadoCatalogoFci" class="status-bar" style="margin-top:10px">Actualizando información de los fondos...</div>
   <div id="catalogoFci" class="fci-grid" aria-live="polite"></div>
   <p class="fci-foot">Datos orientativos de la última actualización disponible. Las tasas y rendimientos pueden cambiar y no garantizan resultados futuros. Verificá condiciones, riesgos y plazos de rescate antes de invertir.</p>
+</section>
+
+<!-- ============ MERCADO: OBLIGACIONES NEGOCIABLES OBSERVADAS ============ -->
+<section class="panel on-panel" aria-labelledby="tituloOns">
+  <h2 id="tituloOns" style="margin-top:0">Obligaciones negociables — datos observados</h2>
+  <p class="dim">Cotizaciones e indicadores publicados por instrumento según los controles del motor FIBRX. La TIR y la duration corresponden al proveedor de mercado, no son cálculos independientes de FIBRX.</p>
+  <div id="estadoCatalogoOns" class="status-bar" style="margin-top:10px" role="status" aria-live="polite">Cargando información de ON...</div>
+  <div id="catalogoOns" class="on-grid" aria-live="polite"></div>
+  <p class="on-foot">La información contractual del maestro interno está pendiente de verificación documental oficial. La presencia de una cotización no certifica cupón, amortización ni prospecto. Data912 se conserva como fuente relacionada para consistencia y no se considera corroboración independiente.</p>
 </section>
 
 
@@ -1665,12 +1697,107 @@ function cargarTasasDesdeArchivo(ev){
   lector.readAsText(archivo);
 }
 
+
+
+// ---------- Presentación y carga independiente del catálogo de ON ----------
+function formatoNumeroON(value,max=2){
+  const n=Number(value);
+  return value!==null&&value!==undefined&&value!==""&&Number.isFinite(n)
+    ? n.toLocaleString("es-AR",{minimumFractionDigits:max===0?0:2,maximumFractionDigits:max})
+    : "No disponible";
+}
+function fechaHoraON(value){
+  if(!value)return "Fecha no informada";
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?escHTML(value):d.toLocaleString("es-AR",{dateStyle:"medium",timeStyle:"short",timeZone:"America/Argentina/Buenos_Aires"})+" (Argentina)";
+}
+function renderCatalogoONS(data){
+  const host=document.getElementById("catalogoOns");
+  const instrumentos=Array.isArray(data?.instrumentos)?data.instrumentos:[];
+  const cards=instrumentos.map(item=>{
+    const m=item?.mercado||{};
+    const c=item?.controles_publicacion_individuales||{};
+    const precioOK=c?.precio?.publicable===true;
+    const tirOK=c?.tir_proveedor?.publicable===true;
+    const durationOK=c?.duration_proveedor?.publicable===true;
+    const emisor=item?.maestro_contractual?.emisor||m?.emisor||"Emisor no informado";
+    const nombre=m?.nombre||item?.ticker||"ON";
+    const moneda=String(m?.moneda_precio_especie||m?.precio_especie_moneda||"");
+    const precioValor=m?.precio_especie;
+    let precioTexto="No publicable";
+    if(precioOK&&precioValor!==null&&precioValor!==undefined&&Number.isFinite(Number(precioValor))){
+      const prefijo=/ARS/i.test(moneda)?"ARS ":(/USD/i.test(moneda)?moneda+" ":(moneda?moneda+" ":""));
+      precioTexto=prefijo+formatoNumeroON(precioValor,2);
+    }
+    const tirTexto=tirOK?formatoNumeroON(m?.tir_api_pct,2)+"%":"No publicable";
+    const durTexto=durationOK?formatoNumeroON(m?.duration_api,2)+" años":"No publicable";
+    const estadoContrato=m?.validacion_contractual?.estado||c?.validacion_contractual?.estado||"PENDIENTE_VERIFICACION";
+    const vencApi=m?.vencimiento_api;
+    const vencMaestro=item?.maestro_contractual?.fecha_vencimiento;
+    const conflictoVenc=Boolean(vencApi&&vencMaestro&&vencApi!==vencMaestro);
+    const advertencias=Array.isArray(m?.advertencias_indicadores)?m.advertencias_indicadores:[];
+    const alertas=[];
+    if(estadoContrato==="CONFLICTO_CONFIRMADO"){
+      alertas.push("Conflicto contractual: vencimiento informado por mercado "+(vencApi||"no disponible")+" frente al maestro interno "+(vencMaestro||"no disponible")+". No se considera validado el contrato.");
+    }else if(estadoContrato!=="VALIDADO"){
+      alertas.push("Datos contractuales pendientes de documentación oficial.");
+    }
+    if(conflictoVenc&&estadoContrato!=="CONFLICTO_CONFIRMADO"){
+      alertas.push("Diferencia entre fechas de vencimiento: mercado "+vencApi+" / maestro "+vencMaestro+".");
+    }
+    advertencias.forEach(x=>alertas.push(String(x)));
+    const isin=item?.isin_maestro||item?.maestro_contractual?.isin||"No informado";
+    return `<article class="on-card">
+      <div class="on-card-head">
+        <div><div class="on-ticker">${escHTML(item?.ticker)}</div><h3>${escHTML(nombre)}</h3><p class="dim">${escHTML(emisor)}</p></div>
+        <span class="badge ${precioOK?"ok":"no-elegible"}">${precioOK?"Precio publicable":"Precio no publicable"}</span>
+      </div>
+      <div class="on-precio"><span class="dim">Precio de negociación · ${escHTML(moneda||"moneda no informada")}</span><strong>${escHTML(precioTexto)}</strong></div>
+      <div class="on-metricas">
+        <div class="on-metrica"><span>TIR · CompararFondos</span><strong>${escHTML(tirTexto)}</strong></div>
+        <div class="on-metrica"><span>Duration · CompararFondos</span><strong>${escHTML(durTexto)}</strong></div>
+        <div class="on-metrica"><span>Operaciones informadas</span><strong>${escHTML(formatoNumeroON(m?.operaciones,0))}</strong></div>
+        <div class="on-metrica"><span>Vencimiento de mercado</span><strong>${escHTML(fechaCorta(vencApi))}</strong></div>
+      </div>
+      ${alertas.map(a=>`<div class="on-alerta">${escHTML(a)}</div>`).join("")}
+      <p class="on-nota">ISIN del maestro: ${escHTML(isin)}. La identificación y los datos contractuales del maestro interno no equivalen a validación documental oficial.</p>
+      <div class="on-fuente">Fuente de mercado: ${escHTML(m?.fuente||"No informada")} · TIR y duration identificadas como datos del proveedor.</div>
+    </article>`;
+  });
+  host.innerHTML=cards.length?cards.join(""):
+    `<article class="on-card no-data"><h3>Sin instrumentos disponibles</h3><p class="on-nota">El JSON no contiene instrumentos para mostrar.</p></article>`;
+  const fecha=fechaHoraON(data?.fecha_consulta_utc);
+  const control=data?.control_publicacion||{};
+  const nPrecio=Array.isArray(control?.tickers_precio_publicable)?control.tickers_precio_publicable.length:instrumentos.filter(x=>x?.controles_publicacion_individuales?.precio?.publicable===true).length;
+  const nTir=Array.isArray(control?.tickers_tir_publicable_proveedor)?control.tickers_tir_publicable_proveedor.length:instrumentos.filter(x=>x?.controles_publicacion_individuales?.tir_proveedor?.publicable===true).length;
+  const nDur=Array.isArray(control?.tickers_duration_publicable_proveedor)?control.tickers_duration_publicable_proveedor.length:instrumentos.filter(x=>x?.controles_publicacion_individuales?.duration_proveedor?.publicable===true).length;
+  document.getElementById("estadoCatalogoOns").textContent=
+    `${instrumentos.length} instrumentos recibidos · ${nPrecio} precios publicables · ${nTir} TIR de proveedor publicables · ${nDur} duration de proveedor publicables · Consulta: ${fecha} · Motor ${data?.version_motor||"no informado"}`;
+}
+async function cargarOnsDelJSON(){
+  const estado=document.getElementById("estadoCatalogoOns");
+  try{
+    const res=await fetch("ons_mercado.json?ts="+Date.now(),{cache:"no-store"});
+    if(!res.ok)throw new Error("No se encontró ons_mercado.json junto a la página.");
+    const data=await res.json();
+    if(!data||data.schema_version!==3||!Array.isArray(data.instrumentos))
+      throw new Error("El JSON de ON no tiene la estructura esperada.");
+    renderCatalogoONS(data);
+  }catch(e){
+    estado.textContent="No se pudo cargar el catálogo de ON: "+(e?.message||"error de lectura");
+    document.getElementById("catalogoOns").innerHTML=
+      `<article class="on-card no-data"><h3>Datos de ON no disponibles</h3><p class="on-nota">La sección de FCI y el simulador continúan funcionando de manera independiente.</p></article>`;
+  }
+}
+
+
 renderEtapasNav();
 renderEtapaActiva();
 calcPMV();
 renderDeudas();
 cargarPlanMov();
 cargarTasasDelJSON();
+cargarOnsDelJSON();
 renderRegistro();
 
 
