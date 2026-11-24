@@ -488,6 +488,10 @@ Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b
   <h2>Plan B · FCI en pesos (escenario estimado, no garantizado)</h2>
   <div class="grid" id="zonaSeguro"></div>
 
+  <h2>Alternativas · Obligaciones Negociables (ON)</h2>
+  <p class="dim">Datos observados de mercado. Se muestran precio, TIR y duration cuando el control de publicación los habilita. No se proyecta un valor futuro ni se calcula una rentabilidad propia mientras los flujos y condiciones contractuales no estén validados.</p>
+  <div class="grid" id="zonaOns"></div>
+
   <h2>Escenario de riesgo · CEDEAR SPY (ilustrativo)</h2>
   <div class="grid" id="zonaRiesgo"></div>
 
@@ -1404,6 +1408,7 @@ function ejecutar(){
 
   // Fase 3b/c: Plan B
   gS.innerHTML=""; gR.innerHTML="";
+  renderComparacionONS(monto,meses);
   for(const v of VEHICULOS){
     if(v.risky){
       if(tipo==="UNICO") continue;
@@ -1565,6 +1570,12 @@ const fmtDato = value => {
   return value!==null && value!==undefined && value!=="" && Number.isFinite(n)
     ? n.toLocaleString("es-AR",{maximumFractionDigits:6}) : mostrar(value);
 };
+function monedaComparableFCI(value){
+  if(typeof value!=="string"||!value.trim())return null;
+  const m=value.trim().toUpperCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+  if(m==="ARS"||m==="PESO ARGENTINO"||m==="PESOS ARGENTINOS"||m==="PESO"||m==="PESOS")return "ARS";
+  return null;
+}
 function nombreVisibleFCI(v,cfg){
   const candidatos=[v?.nombre,v?.nombre_api,cfg?.nombre];
   for(const candidato of candidatos){
@@ -1592,6 +1603,8 @@ function renderCatalogoFCI(data){
 
     const tna=Number(v.tna);
     const tnaDisponible=Number.isFinite(tna)&&tna>0&&tna<=5;
+    const monedaARS=monedaComparableFCI(v.moneda_fondo)==="ARS";
+    const comparable=tnaDisponible&&monedaARS;
     const tnaTxt=tnaDisponible?porcentajeFraccion(tna):"No disponible";
     const rendimientos=[
       ["7 días",v.retorno_7d],
@@ -1606,12 +1619,12 @@ function renderCatalogoFCI(data){
     return `<article class="fci-card">
       <div class="fci-head">
         <h3>${escHTML(nombre)}</h3>
-        <span class="badge ${tnaDisponible?"ok":"no-elegible"}">${tnaDisponible?"TNA disponible":"Tasa no disponible"}</span>
+        <span class="badge ${comparable?"ok":"no-elegible"}">${comparable?"Incluido en Plan B ARS":(!monedaARS?"No comparable en ARS":"Tasa no disponible")}</span>
       </div>
       <div class="fci-main-metric">
         <span class="fci-kicker">TNA estimada</span>
         <strong class="fci-tna">${escHTML(tnaTxt)}</strong>
-        ${!tnaDisponible?`<p class="fci-nota">La fuente no informa una TNA válida para esta clase. No se reemplaza por la tasa de otro fondo.</p>`:""}
+        ${!tnaDisponible?`<p class="fci-nota">La fuente no informa una TNA válida para esta clase. No se reemplaza por la tasa de otro fondo.</p>`:(!monedaARS?`<p class="fci-nota">Moneda informada: ${escHTML(v.moneda_fondo||"No informada")}. Se muestra en el catálogo, pero no se incorpora al Plan B en pesos.</p>`:"")}
       </div>
       ${rendimientos.length?`<div class="fci-rendimientos" aria-label="Rendimientos históricos">
         ${rendimientos.map(([periodo,valor])=>`<div class="fci-rendimiento"><span>${escHTML(periodo)}</span><strong>${escHTML(porcentajePuntos(valor))}</strong></div>`).join("")}
@@ -1631,7 +1644,7 @@ function renderCatalogoFCI(data){
   document.getElementById("estadoCatalogoFci").textContent=
     `${publicados} de ${FCI_OBJETIVO.length} fondos con datos · ${conTasa} con TNA disponible · Fuente: ArgentinaDatos`;
 }
-async function validarCatalogoTasas(data){
+function validarCatalogoTasas(data){
   if(!data||data.estado_global!=="DATOS_ARGENTINADATOS_UNA_FUENTE"||!Array.isArray(data.vehiculos))
     throw new Error("El JSON no tiene el estado o la estructura esperada.");
   const ids=new Set();
@@ -1661,8 +1674,10 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
     const ext=externos.get(cfg.id);
     if(!ext)continue;
     const tna=Number(ext.tna);
-    if(!Number.isFinite(tna)||tna<=0||tna>5)continue; // El JSON v6 expresa TNA como fracción.
-    if(String(ext.moneda_fondo||"ARS").toUpperCase()!=="ARS")continue;
+    if(!Number.isFinite(tna)||tna<=0||tna>5)continue; // El JSON expresa TNA como fracción.
+    // Solo se incorpora al Plan B en pesos si la moneda está explícitamente identificada como ARS.
+    // "Peso Argentino" y variantes equivalentes se normalizan; moneda ausente o extranjera no se presume ARS.
+    if(monedaComparableFCI(ext.moneda_fondo)!=="ARS")continue;
     const local=locales.get(cfg.id)||{};
     actualizados.push({...local,...ext,
       nombre:ext.nombre||ext.nombre_api||local.nombre||cfg.nombre,
@@ -1677,6 +1692,11 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
   const fecha=data.fecha_datos_fuente||data.actualizado_el||"Fecha no informada";
   const el=document.getElementById("fechaTasas");el.textContent=fecha;
   if(fecha!=="Fecha no informada")el.dateTime=fecha;
+  const recibidos=data.vehiculos.filter(v=>FCI_OBJETIVO.some(cfg=>cfg.id===v.id));
+  const sinMonedaARS=recibidos.filter(v=>monedaComparableFCI(v.moneda_fondo)!=="ARS").length;
+  const sinTNA=recibidos.filter(v=>{const n=Number(v.tna);return !Number.isFinite(n)||n<=0||n>5;}).length;
+  document.getElementById("estadoCatalogoFci").textContent=
+    `${recibidos.length} clases recibidas · ${actualizados.length} incorporadas al Plan B ARS · ${sinMonedaARS} excluidas por moneda no ARS/no informada · ${sinTNA} sin TNA utilizable`;
   if(!actualizados.length)document.getElementById("origenTasas").textContent="Catálogo recibido, pero sin TNA ARS utilizable para calcular";
 }
 async function cargarTasasDelJSON(){
@@ -1700,6 +1720,7 @@ function cargarTasasDesdeArchivo(ev){
 
 
 // ---------- Presentación y carga independiente del catálogo de ON ----------
+let DATOS_ONS = null;
 function formatoNumeroON(value,max=2){
   const n=Number(value);
   return value!==null&&value!==undefined&&value!==""&&Number.isFinite(n)
@@ -1774,6 +1795,68 @@ function renderCatalogoONS(data){
   document.getElementById("estadoCatalogoOns").textContent=
     `${instrumentos.length} instrumentos recibidos · ${nPrecio} precios publicables · ${nTir} TIR de proveedor publicables · ${nDur} duration de proveedor publicables · Consulta: ${fecha} · Motor ${data?.version_motor||"no informado"}`;
 }
+function renderComparacionONS(monto, meses){
+  const host=document.getElementById("zonaOns");
+  if(!host)return;
+  const instrumentos=Array.isArray(DATOS_ONS?.instrumentos)?DATOS_ONS.instrumentos:[];
+  if(!DATOS_ONS){
+    host.innerHTML=`<article class="tarjeta no-data"><h3>ON todavía no disponibles</h3><p class="dim">El catálogo de ON aún no terminó de cargar. Volvé a ejecutar la comparación cuando esté disponible.</p></article>`;
+    return;
+  }
+  if(!instrumentos.length){
+    host.innerHTML=`<article class="tarjeta no-data"><h3>Sin ON para comparar</h3><p class="dim">El JSON no contiene instrumentos.</p></article>`;
+    return;
+  }
+  const hoy=new Date();
+  const fechaFin=new Date(hoy.getFullYear(),hoy.getMonth()+meses,hoy.getDate());
+  host.innerHTML=instrumentos.map(item=>{
+    const m=item?.mercado||{};
+    const c=item?.controles_publicacion_individuales||{};
+    const precioOK=c?.precio?.publicable===true;
+    const tirOK=c?.tir_proveedor?.publicable===true;
+    const durOK=c?.duration_proveedor?.publicable===true;
+    const moneda=String(m?.moneda_precio_especie||m?.precio_especie_moneda||"No informada");
+    const precio=m?.precio_especie;
+    const precioTxt=precioOK&&precio!==null&&precio!==undefined&&Number.isFinite(Number(precio))
+      ? `${moneda} ${formatoNumeroON(precio,2)}` : "No publicable";
+    const tir=tirOK&&m?.tir_api_pct!==null&&m?.tir_api_pct!==undefined
+      ? `${formatoNumeroON(m.tir_api_pct,2)}%` : "No publicable";
+    const duration=durOK&&m?.duration_api!==null&&m?.duration_api!==undefined
+      ? `${formatoNumeroON(m.duration_api,2)} años` : "No publicable";
+    const venc=m?.vencimiento_api;
+    const fechaVenc=venc?new Date(`${String(venc).slice(0,10)}T12:00:00`):null;
+    const venceAntes=fechaVenc&&!Number.isNaN(fechaVenc.getTime())&&fechaVenc<fechaFin;
+    const monedaARS=/\bARS\b|PESO/i.test(moneda);
+    const estadoContrato=m?.validacion_contractual?.estado||c?.validacion_contractual?.estado||"PENDIENTE_VERIFICACION";
+    const alertas=[];
+    if(!precioOK)alertas.push("Precio no habilitado para publicación.");
+    if(precioOK&&!monedaARS)alertas.push("Cotización en "+moneda+": no se convierte a pesos ni se mezcla con el monto ingresado en ARS.");
+    if(venceAntes)alertas.push("El vencimiento informado ocurre antes de finalizar el horizonte seleccionado; no se supone reinversión de cobros.");
+    if(estadoContrato==="CONFLICTO_CONFIRMADO")alertas.push("Conflicto contractual detectado: no se considera validado el cronograma.");
+    else if(estadoContrato!=="VALIDADO")alertas.push("Condiciones contractuales pendientes de documentación oficial.");
+    const flags=[];
+    if(m?.tirMonedaCruzada===null||m?.tirMonedaCruzada===undefined)flags.push("moneda de cálculo no confirmada");
+    if(m?.tirEsReal===null||m?.tirEsReal===undefined)flags.push("naturaleza nominal/real no confirmada");
+    const advertencias=Array.isArray(m?.advertencias_indicadores)?m.advertencias_indicadores:[];
+    const isin=item?.isin_maestro||item?.maestro_contractual?.isin||"No informado";
+    return `<article class="tarjeta on-card">
+      <div class="on-card-head"><div><div class="on-ticker">${escHTML(item?.ticker||"ON")}</div><h3>${escHTML(m?.nombre||item?.ticker||"Obligación Negociable")}</h3></div>
+      <span class="badge ${precioOK?"ok":"no-elegible"}">${precioOK?"Precio publicable":"Precio no publicable"}</span></div>
+      <div class="on-precio"><span class="dim">Precio de negociación</span><strong>${escHTML(precioTxt)}</strong></div>
+      <div class="on-metricas">
+        <div class="on-metrica"><span>TIR · CompararFondos</span><strong>${escHTML(tir)}</strong></div>
+        <div class="on-metrica"><span>Duration · CompararFondos</span><strong>${escHTML(duration)}</strong></div>
+        <div class="on-metrica"><span>Vencimiento informado</span><strong>${escHTML(fechaCorta(venc))}</strong></div>
+        <div class="on-metrica"><span>Operaciones</span><strong>${escHTML(formatoNumeroON(m?.operaciones,0))}</strong></div>
+      </div>
+      <p class="dim">Horizonte de comparación: ${meses} meses · Monto ingresado: ${fmt(monto)} ARS. No se calcula cantidad nominal ni valor futuro.</p>
+      ${flags.length?`<div class="on-alerta">TIR con reservas: ${escHTML(flags.join("; "))}. ${escHTML(advertencias.join("; "))}</div>`:""}
+      ${alertas.map(a=>`<div class="on-alerta">${escHTML(a)}</div>`).join("")}
+      <p class="on-nota">ISIN: ${escHTML(isin)} · Fuente: ${escHTML(m?.fuente||"No informada")}. La TIR y duration son datos del proveedor, no cálculos independientes de FIBRX.</p>
+    </article>`;
+  }).join("");
+}
+
 async function cargarOnsDelJSON(){
   const estado=document.getElementById("estadoCatalogoOns");
   try{
@@ -1782,8 +1865,10 @@ async function cargarOnsDelJSON(){
     const data=await res.json();
     if(!data||data.schema_version!==3||!Array.isArray(data.instrumentos))
       throw new Error("El JSON de ON no tiene la estructura esperada.");
+    DATOS_ONS=data;
     renderCatalogoONS(data);
   }catch(e){
+    DATOS_ONS=null;
     estado.textContent="No se pudo cargar el catálogo de ON: "+(e?.message||"error de lectura");
     document.getElementById("catalogoOns").innerHTML=
       `<article class="on-card no-data"><h3>Datos de ON no disponibles</h3><p class="on-nota">La sección de FCI y el simulador continúan funcionando de manera independiente.</p></article>`;
