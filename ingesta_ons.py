@@ -6,15 +6,16 @@ FIBRX | Ingesta y validación de Obligaciones Negociables.
 Objetivo:
 - Consultar fuentes externas al ejecutar el script.
 - Actualizar precio/indicadores desde CompararFondos.
-- Corroborar cotización con Data912, que su propia documentación califica
-  como educativa/no necesariamente real; nunca se usa como fuente primaria.
+- Registrar Data912 como fuente relacionada dentro de la misma cadena de datos;
+  no se considera corroboración independiente de CompararFondos.
 - Validar datos públicos contra el maestro contractual local.
 - No inventar datos ni mapear especies O/C/D automáticamente.
 - Generar JSON con trazabilidad, alertas y fecha de consulta.
 
 Fuentes:
   CompararFondos: https://compararfondos.com.ar/api/bonos
-  Data912 (corroboración no autoritativa): https://data912.com/live/arg_corp
+  Data912 (fuente relacionada / upstream según documentación consultada):
+    https://data912.com/live/arg_corp
 
 IMPORTANTE:
 CompararFondos es un agregador público, no el prospecto ni BYMA directamente.
@@ -29,7 +30,6 @@ import json
 import math
 import os
 import sys
-import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.request import Request, urlopen
@@ -38,6 +38,7 @@ from urllib.error import URLError, HTTPError
 
 URL_COMPARARFONDOS = "https://compararfondos.com.ar/api/bonos"
 URL_DATA912 = "https://data912.com/live/arg_corp"
+VERSION_MOTOR = "2.0.0"
 TIMEOUT_SEGUNDOS = 20
 ARCHIVO_SALIDA = os.environ.get("FIBRX_ON_OUTPUT", "ons_mercado.json")
 
@@ -132,7 +133,7 @@ def normalizar_fecha(valor: Any) -> Optional[str]:
         return None
     try:
         return datetime.fromisoformat(str(valor)[:10]).date().isoformat()
-    except ValueError:
+    except (TypeError, ValueError):
         return None
 
 
@@ -159,6 +160,33 @@ def indice_por_ticker(payload: Any, clave_lista: str) -> Dict[str, Dict[str, Any
     if duplicados:
         raise ValueError("Tickers duplicados en respuesta API: " + ", ".join(sorted(duplicados)))
     return resultado
+
+
+
+def analizar_fecha_rueda(rueda: Any, fecha_consulta: Optional[str] = None) -> Dict[str, Any]:
+    """Describe antigüedad de rueda sin imponer un umbral arbitrario de bloqueo."""
+    if not isinstance(rueda, dict):
+        return {"estado": "RUEDA_NO_INFORMADA", "fecha_rueda": None,
+                "dias_desde_rueda": None, "abierta": None,
+                "liquidacion": None}
+    fecha_rueda = normalizar_fecha(rueda.get("fechaRueda"))
+    abierta = rueda.get("abierta") if isinstance(rueda.get("abierta"), bool) else None
+    liquidacion = normalizar_fecha(rueda.get("liquidacion"))
+    if not fecha_rueda:
+        estado = "FECHA_RUEDA_NO_INFORMADA"
+        dias = None
+    else:
+        try:
+            fecha_base = datetime.fromisoformat((fecha_consulta or ahora_utc()).replace("Z", "+00:00")).date()
+            fecha_dato = datetime.fromisoformat(fecha_rueda).date()
+            dias = (fecha_base - fecha_dato).days
+            estado = "FECHA_RUEDA_FUTURA" if dias < 0 else "FECHA_RUEDA_INFORMADA"
+        except ValueError:
+            dias = None
+            estado = "FECHA_RUEDA_INVALIDA"
+    return {"estado": estado, "fecha_rueda": fecha_rueda,
+            "dias_desde_rueda": dias, "abierta": abierta,
+            "liquidacion": liquidacion}
 
 
 def validar_flujos_api(flujos: Any, vencimiento: Optional[str]) -> Dict[str, Any]:
@@ -360,7 +388,7 @@ def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
     if tir_moneda_cruzada is not False:
         razones_tir.append("La API no descarta TIR con moneda cruzada")
     if tir_es_real is True:
-        razones_tir.append("La tasa informada está marcada como real, no nominal")
+        razones_tir.append("La API marca la TIR como real; no debe presentarse como TIR nominal")
     if pago_en == "cable" and tc_type == "MEP":
         razones_tir.append("El bono paga en cable y cotiza en MEP")
 
@@ -378,10 +406,15 @@ def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
         "tcType": tc_type,
         "moneda_precio_especie": moneda_precio_especie,
         "precio_especie": precio_especie,
+        # En especie O, precioARS_api es la cotización nominal de la especie
+        # en pesos; precio_api_equivalente es el equivalente USD MEP usado
+        # por CompararFondos para sus cálculos de TIR/paridad.
         "precio_api_equivalente": precio_api,
+        "precio_base_calculo_tir_api": precio_api,
         "precioARS_api": precio_ars,
+        "precio_especie_moneda": moneda_precio_especie,
         "ley": registro.get("ley"),
-        "precio": precio_especie,
+        "precio": precio_especie,  # Alias de compatibilidad: precio de la especie.
         "precioStale": stale,
         "operaciones": operaciones,
         "volume": normalizar_numero(registro.get("volume")),
@@ -399,6 +432,26 @@ def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
         "pagoEn": registro.get("pagoEn"),
         "nextCoupon": registro.get("nextCoupon"),
         "flujos": registro.get("flujos"),
+        "diagnostico_campos_api": {
+            "campos_criticos_presentes": sorted(
+                k for k in ("ticker", "tipo", "moneda", "tcType", "precio",
+                            "precioARS", "tir", "duration", "operaciones",
+                            "precioStale", "tirStale", "tirPocasOps",
+                            "tirMonedaCruzada", "tirEsReal", "pagoEn",
+                            "vencimiento", "flujos") if k in registro
+            ),
+            "campos_criticos_ausentes": [
+                k for k in ("ticker", "tipo", "moneda", "tcType", "precio",
+                            "tir", "duration", "operaciones", "precioStale",
+                            "tirStale", "tirPocasOps", "tirMonedaCruzada",
+                            "tirEsReal", "vencimiento", "flujos") if k not in registro
+            ],
+            "valores_raw_flags": {
+                k: registro.get(k) for k in ("precioStale", "tirStale",
+                    "tirPocasOps", "tirMonedaCruzada", "tirEsReal", "pagoEn")
+                if k in registro
+            },
+        },
         "validacion_contractual": validacion,
         "precio_utilizable": precio_utilizable,
         "indicadores_utilizables": indicadores_utilizables,
@@ -416,7 +469,7 @@ def evaluar_data912(ticker: str, registro: Optional[Dict[str, Any]]) -> Dict[str
 
     return {
         "ticker": ticker,
-        "estado": "SOLO_CORROBORACION_NO_AUTORITATIVA",
+        "estado": "FUENTE_RELACIONADA_NO_INDEPENDIENTE",
         "fuente": "Data912",
         "url_fuente": URL_DATA912,
         "precio": normalizar_numero(registro.get("c")),
@@ -425,9 +478,10 @@ def evaluar_data912(ticker: str, registro: Optional[Dict[str, Any]]) -> Dict[str
         "bid": normalizar_numero(registro.get("px_bid")),
         "ask": normalizar_numero(registro.get("px_ask")),
         "nota": (
-            "La documentación de Data912 indica que sus datos son educativos "
-            "y no necesariamente reales/en tiempo real. No se usa para publicar "
-            "precio, TIR ni duration como dato validado."
+            "Data912 forma parte de la cadena de suministro de cotizaciones "
+            "documentada por CompararFondos. Se conserva para diagnóstico de "
+            "consistencia, pero no cuenta como fuente independiente ni valida "
+            "por sí sola precio, TIR o duration."
         ),
     }
 
@@ -443,17 +497,26 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
         )
 
     reporte = {
-        "schema_version": 1,
+        "schema_version": 2,
         "producto": "FIBRX | Motor de ON",
+        "version_motor": VERSION_MOTOR,
         "fecha_consulta_utc": ahora_utc(),
         "estado_general": "INICIALIZANDO",
         "fuentes": {},
+        "linaje_datos": {
+            "CompararFondos": "Agregador de mercado; atribución requerida.",
+            "Data912": "Fuente relacionada/upstream según documentación pública de CompararFondos; no independiente.",
+            "independencia_entre_fuentes": False,
+            "nota": "La coincidencia entre ambas respuestas no equivale a corroboración independiente.",
+        },
         "instrumentos": [],
         "advertencias": [
             "La coincidencia con un agregador no certifica el prospecto.",
             "No se convierten ni mezclan especies O, C y D.",
             "No se utilizan datos de cartera privada.",
-            "Data912 se conserva sólo como corroboración no autoritativa.",
+            "Data912 no se considera una fuente independiente de CompararFondos.",
+            "En especie O se distinguen precioARS (precio de especie) y precio (equivalente USD MEP usado por el agregador para TIR/paridad).",
+            "La antigüedad de rueda se informa; no se aplica un umbral temporal arbitrario de bloqueo.",
         ],
     }
 
@@ -466,7 +529,12 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             "url": URL_COMPARARFONDOS,
             "registros_recibidos": len(indice_cf),
             "rueda": payload_cf.get("rueda") if isinstance(payload_cf, dict) else None,
-            "rol": "Fuente primaria de mercado agregada",
+            "analisis_rueda": analizar_fecha_rueda(
+                payload_cf.get("rueda") if isinstance(payload_cf, dict) else None,
+                reporte["fecha_consulta_utc"]
+            ),
+            "age_min": payload_cf.get("age_min") if isinstance(payload_cf, dict) else None,
+            "rol": "Fuente primaria de mercado agregada (no fuente contractual)",
             "atribucion_requerida": True,
         }
     except Exception as exc:
@@ -483,7 +551,7 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             "estado": "OK",
             "url": URL_DATA912,
             "registros_recibidos": len(indice_d9),
-            "rol": "Corroboración no autoritativa; no habilita publicación",
+            "rol": "Fuente relacionada dentro de la misma cadena; no independiente",
         }
     except Exception as exc:
         indice_d9 = {}
@@ -517,6 +585,11 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             "mercado": cf,
             "corroboracion": d9,
             "diferencia_absoluta_precio_vs_data912": diferencias_precio,
+            "control_consistencia_misma_cadena": {
+                "diferencia_absoluta": diferencias_precio,
+                "independiente": False,
+                "nota": "Comparación diagnóstica entre endpoints relacionados; no es validación independiente.",
+            },
         }
         reporte["instrumentos"].append(instrumento)
 
@@ -538,6 +611,15 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
         reporte["estado_general"] = "CONSULTA_COMPLETADA_SIN_PRECIOS_VALIDOS"
 
     reporte["errores"] = errores
+    reporte["control_publicacion"] = {
+        "publicar_tir_y_duration": False,
+        "motivo": "Este motor aún no recalcula independientemente la TIR ni certifica los flujos contra documentación contractual oficial.",
+        "publicar_precio": all(
+            i["mercado"].get("precio_utilizable") is True
+            for i in reporte["instrumentos"]
+        ) and bool(reporte["instrumentos"]),
+        "nota": "precio_utilizable indica disponibilidad de mercado con reservas; no equivale a recomendación ni certificación contractual.",
+    }
     return reporte
 
 
@@ -556,8 +638,9 @@ def imprimir_resumen(reporte: Dict[str, Any]) -> None:
         m = item["mercado"]
         print(
             f'{item["ticker"]:8} | {m.get("estado","N/D"):42} | '
-            f'Precio={m.get("precio")} | TIR={m.get("tir_api_pct")} | '
-            f'Ops={m.get("operaciones")}'
+            f'Precio especie={m.get("precio_especie")} {m.get("moneda_precio_especie")} | '
+            f'Precio eq. API={m.get("precio_api_equivalente")} | '
+            f'TIR API={m.get("tir_api_pct")} | Ops={m.get("operaciones")}'
         )
         validacion = m.get("validacion_contractual", {})
         for diferencia in validacion.get("diferencias", []):
