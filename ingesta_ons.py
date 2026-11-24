@@ -30,6 +30,10 @@ import json
 import math
 import os
 import sys
+import gzip
+import hashlib
+import zipfile
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.request import Request, urlopen
@@ -38,9 +42,14 @@ from urllib.error import URLError, HTTPError
 
 URL_COMPARARFONDOS = "https://compararfondos.com.ar/api/bonos"
 URL_DATA912 = "https://data912.com/live/arg_corp"
-VERSION_MOTOR = "2.0.0"
+VERSION_MOTOR = "2.1.0"
 TIMEOUT_SEGUNDOS = 20
 ARCHIVO_SALIDA = os.environ.get("FIBRX_ON_OUTPUT", "ons_mercado.json")
+DIRECTORIO_EVIDENCIA = os.environ.get("FIBRX_ON_EVIDENCE_DIR", "ons_evidencia")
+ARCHIVO_PAQUETE_EVIDENCIA = os.environ.get("FIBRX_ON_EVIDENCE_ZIP", "ons_evidencia.zip")
+NIVEL_1 = "1_DATO_RECIBIDO_TRAZABLE"
+NIVEL_2 = "2_DATO_CONTRASTADO_FUENTE_INDEPENDIENTE"
+NIVEL_3 = "3_DATO_VALIDADO_DOCUMENTALMENTE"
 
 # No se agregan equivalencias O/C/D. Cada símbolo debe existir en forma exacta.
 # Estos cuatro contratos proceden del archivo entregado por el usuario y
@@ -103,7 +112,9 @@ def ahora_utc() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def obtener_json(url: str) -> Any:
+def obtener_json_con_evidencia(url: str, nombre: str, directorio: str) -> Tuple[Any, Dict[str, Any]]:
+    """Descarga JSON, conserva bytes originales comprimidos y calcula su SHA-256."""
+    capturado_utc = ahora_utc()
     req = Request(
         url,
         headers={
@@ -112,10 +123,207 @@ def obtener_json(url: str) -> Any:
         },
     )
     with urlopen(req, timeout=TIMEOUT_SEGUNDOS) as response:
-        if response.status != 200:
-            raise RuntimeError(f"HTTP {response.status} consultando {url}")
+        status_http = getattr(response, "status", 200)
+        headers = response.headers
         raw = response.read()
-    return json.loads(raw.decode("utf-8"))
+    if status_http != 200:
+        raise RuntimeError(f"HTTP {status_http} consultando {url}")
+
+    # El hash se calcula sobre los bytes HTTP originales, antes de descomprimir/parsear.
+    sha256 = hashlib.sha256(raw).hexdigest()
+    payload = json.loads(raw.decode("utf-8-sig"))
+    carpeta = Path(directorio)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    nombre_archivo = f"{nombre}_respuesta_original.json.gz"
+    ruta = carpeta / nombre_archivo
+    with ruta.open("wb") as destino:
+        with gzip.GzipFile(filename="", mode="wb", fileobj=destino, mtime=0) as comprimido:
+            comprimido.write(raw)
+
+    metadata = {
+        "fuente": nombre,
+        "url": url,
+        "capturado_utc": capturado_utc,
+        "http_status": status_http,
+        "content_type": headers.get("Content-Type"),
+        "http_date": headers.get("Date"),
+        "bytes_respuesta_original": len(raw),
+        "sha256_respuesta_original": sha256,
+        "archivo_snapshot_comprimido": str(ruta.as_posix()),
+        "formato_snapshot": "gzip del cuerpo HTTP original; al descomprimir se recuperan los bytes exactos",
+    }
+    return payload, metadata
+
+
+def crear_paquete_evidencia(metadata_fuentes: Dict[str, Any], errores: List[str],
+                             directorio: str = DIRECTORIO_EVIDENCIA,
+                             destino_zip: str = ARCHIVO_PAQUETE_EVIDENCIA) -> Dict[str, Any]:
+    """Empaqueta snapshots y manifiesto verificable de cada consulta."""
+    carpeta = Path(directorio)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    manifiesto = {
+        "producto": "FIBRX | Evidencia de ingesta de ON",
+        "version_motor": VERSION_MOTOR,
+        "generado_utc": ahora_utc(),
+        "algoritmo_hash": "SHA-256 sobre bytes HTTP originales, antes del parseo JSON",
+        "fuentes": metadata_fuentes,
+        "errores": errores,
+        "advertencia": "El hash acredita integridad del snapshot capturado, no la veracidad económica del dato publicado por la fuente.",
+    }
+    ruta_manifiesto = carpeta / "manifiesto_evidencia.json"
+    ruta_manifiesto.write_text(json.dumps(manifiesto, ensure_ascii=False, indent=2), encoding="utf-8")
+    ruta_readme = carpeta / "LEEME.txt"
+    ruta_readme.write_text(
+        "FIBRX - Evidencia de ingesta de ON\n\n"
+        "Los archivos *_respuesta_original.json.gz contienen el cuerpo HTTP original comprimido.\n"
+        "Para verificar: descomprimir el archivo y calcular SHA-256 sobre los bytes resultantes;\n"
+        "comparar con sha256_respuesta_original del manifiesto.\n\n"
+        "El hash prueba integridad del archivo capturado, no exactitud del dato de origen.\n"
+        "Data912 y CompararFondos se consideran fuentes relacionadas, no independientes.\n",
+        encoding="utf-8",
+    )
+    zip_path = Path(destino_zip)
+    if zip_path.parent != Path('.'):
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for archivo in sorted(carpeta.iterdir()):
+            if archivo.is_file():
+                zf.write(archivo, arcname=archivo.name)
+    return {
+        "archivo": str(zip_path.as_posix()),
+        "sha256_paquete": hashlib.sha256(zip_path.read_bytes()).hexdigest(),
+        "archivos_incluidos": sorted(a.name for a in carpeta.iterdir() if a.is_file()),
+        "fuentes_capturadas": sorted(metadata_fuentes),
+    }
+
+
+def evidencia_campo(valor: Any, fuente: str, url: str, campo_api: str,
+                    captura: Optional[Dict[str, Any]], nota: str = "") -> Dict[str, Any]:
+    """Etiqueta la procedencia y el respaldo sin confundir recepción con validación."""
+    existe = valor is not None
+    return {
+        "valor": valor,
+        "estado": ("RECIBIDO_CON_SNAPSHOT" if (captura or {}).get("sha256_respuesta_original") else "RECIBIDO_SIN_SNAPSHOT") if existe else "NO_INFORMADO",
+        "nivel": NIVEL_1 if existe and (captura or {}).get("sha256_respuesta_original") else None,
+        "fuente": fuente if existe else None,
+        "url": url if existe else None,
+        "campo_origen": campo_api if existe else None,
+        "captura_utc": (captura or {}).get("capturado_utc") if existe else None,
+        "sha256_respuesta_origen": (captura or {}).get("sha256_respuesta_original") if existe else None,
+        "contraste_independiente": False,
+        "validacion_documental": False,
+        "habilitado_publicacion": False,
+        "nota": nota or ("Dato recibido y trazable; no implica verificación independiente." if existe else "La fuente no informó este campo."),
+    }
+
+
+def construir_evidencias_instrumento(ticker: str, mercado: Dict[str, Any],
+                                     maestro: Dict[str, Any], raw_cf: Optional[Dict[str, Any]],
+                                     raw_d9: Optional[Dict[str, Any]],
+                                     captura_cf: Optional[Dict[str, Any]],
+                                     captura_d9: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    tc = str((raw_cf or {}).get("tcType") or "").upper()
+    campo_precio = "precioARS" if tc == "ARS" else "precio"
+    precio = (raw_cf or {}).get(campo_precio)
+    precio_equiv = (raw_cf or {}).get("precio")
+    raw_cf = raw_cf or {}
+    raw_d9 = raw_d9 or {}
+
+    evidencias = {
+        "precio_especie": evidencia_campo(
+            precio, "CompararFondos", URL_COMPARARFONDOS, campo_precio, captura_cf,
+            "Precio de la especie de negociación. En especie O se toma precioARS; en D/C se toma precio según tcType."
+        ),
+        "precio_equivalente_api": evidencia_campo(
+            precio_equiv, "CompararFondos", URL_COMPARARFONDOS, "precio", captura_cf,
+            "Equivalente informado por el agregador; no reemplaza el precio nominal de especie O."
+        ),
+        "tir_api_pct": evidencia_campo(
+            raw_cf.get("tir"), "CompararFondos", URL_COMPARARFONDOS, "tir", captura_cf,
+            "TIR calculada/informada por el agregador; no es cálculo independiente de FIBRX y permanece no publicable."
+        ),
+        "duration_api": evidencia_campo(
+            raw_cf.get("duration"), "CompararFondos", URL_COMPARARFONDOS, "duration", captura_cf,
+            "Duration informada por el agregador; no está recalculada independientemente."
+        ),
+        "vencimiento_api": evidencia_campo(
+            raw_cf.get("vencimiento"), "CompararFondos", URL_COMPARARFONDOS, "vencimiento", captura_cf,
+            "Dato de API comparado con el maestro heredado; revisar estado de conflicto/pendiente."
+        ),
+        "emisor_api": evidencia_campo(
+            raw_cf.get("emisor"), "CompararFondos", URL_COMPARARFONDOS, "emisor", captura_cf
+        ),
+        "flujos_api": evidencia_campo(
+            raw_cf.get("flujos"), "CompararFondos", URL_COMPARARFONDOS, "flujos", captura_cf,
+            "Flujos originales de API; su estructura no acredita el contrato."
+        ),
+        "isin_maestro": {
+            "valor": maestro.get("isin"), "estado": "REGISTRO_LOCAL_PENDIENTE_DOCUMENTACION",
+            "nivel": None,
+            "fuente": maestro.get("fuente_contractual"), "campo_origen": "MAESTRO_CONTRACTUAL",
+            "contraste_independiente": False, "validacion_documental": False,
+            "nota": "ISIN conservado del maestro local; requiere contraste con documentación oficial."
+        },
+        "tna_maestro": {
+            "valor": maestro.get("tna"), "estado": "REGISTRO_LOCAL_PENDIENTE_DOCUMENTACION",
+            "nivel": None,
+            "fuente": maestro.get("fuente_contractual"), "campo_origen": "MAESTRO_CONTRACTUAL",
+            "contraste_independiente": False, "validacion_documental": False,
+            "nota": "Tasa del maestro heredado; no certificada por prospecto."
+        },
+        "amortizaciones_maestro": {
+            "valor": maestro.get("cronograma_amortizacion"), "estado": "REGISTRO_LOCAL_PENDIENTE_DOCUMENTACION",
+            "nivel": None,
+            "fuente": maestro.get("fuente_contractual"), "campo_origen": "MAESTRO_CONTRACTUAL",
+            "contraste_independiente": False, "validacion_documental": False,
+            "nota": "Cronograma heredado; no certificado contra suplemento/prospecto oficial."
+        },
+        "comparacion_vencimiento": {
+            "valor_api": mercado.get("vencimiento_api"),
+            "valor_maestro": maestro.get("fecha_vencimiento"),
+            "estado": (mercado.get("validacion_contractual") or {}).get("estado"),
+            "nivel": NIVEL_1 if captura_cf and captura_cf.get("sha256_respuesta_original") else None,
+            "fuente_api": "CompararFondos",
+            "fuente_maestro": maestro.get("fuente_contractual"),
+            "validacion_documental": False,
+            "nota": "La comparación detecta coincidencias o conflictos entre API y maestro; no sustituye el prospecto oficial."
+        },
+    }
+    # Data912 se documenta como consistencia interna de una cadena relacionada.
+    precio_d9 = raw_d9.get("c")
+    evidencias["precio_data912_relacionado"] = evidencia_campo(
+        precio_d9, "Data912 (fuente relacionada)", URL_DATA912, "c", captura_d9,
+        "No eleva el nivel de evidencia: no se considera fuente independiente de CompararFondos."
+    )
+
+    estado_contractual = (mercado.get("validacion_contractual") or {}).get("estado")
+    conflicto = estado_contractual == "CONFLICTO_CONFIRMADO"
+    pendientes = estado_contractual != "COINCIDENCIA_EN_CAMPOS_DISPONIBLES"
+    valores_con_nivel = [e for e in evidencias.values() if e.get("nivel")]
+    captura_primaria_ok = bool(captura_cf and captura_cf.get("sha256_respuesta_original"))
+    if conflicto:
+        estado_global = "CONFLICTO_PENDIENTE_DE_RESOLUCION"
+    elif not captura_primaria_ok:
+        estado_global = "SIN_SNAPSHOT_DE_FUENTE_PRIMARIA"
+    else:
+        estado_global = "SOLO_DATOS_RECIBIDOS_TRAZABLES"
+    return {
+        "estado_global": estado_global,
+        "nivel_actual": NIVEL_1 if captura_primaria_ok and valores_con_nivel else None,
+        "nivel_2_alcanzado": False,
+        "nivel_3_alcanzado": False,
+        "requiere_documentacion_contractual": pendientes,
+        "requiere_fuente_mercado_independiente": True,
+        "cantidad_campos_nivel_1": len(valores_con_nivel),
+        "cantidad_campos_nivel_2": 0,
+        "cantidad_campos_nivel_3": 0,
+        "campos": evidencias,
+        "registros_originales_api": {
+            "CompararFondos": raw_cf if raw_cf else None,
+            "Data912": raw_d9 if raw_d9 else None,
+        },
+        "regla": "La recepción con hash acredita trazabilidad/integridad del snapshot, no veracidad económica. Nivel 2 exige fuente realmente independiente; nivel 3 exige documento oficial comprobado.",
+    }
 
 
 def normalizar_numero(valor: Any) -> Optional[float]:
@@ -496,8 +704,11 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             + ". No se aplican alias automáticos."
         )
 
+    directorio_evidencia_run = str(
+        Path(DIRECTORIO_EVIDENCIA) / (ahora_utc().replace(":", "").replace("+", "_").replace("-", ""))
+    )
     reporte = {
-        "schema_version": 2,
+        "schema_version": 3,
         "producto": "FIBRX | Motor de ON",
         "version_motor": VERSION_MOTOR,
         "fecha_consulta_utc": ahora_utc(),
@@ -510,6 +721,7 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             "nota": "La coincidencia entre ambas respuestas no equivale a corroboración independiente.",
         },
         "instrumentos": [],
+        "paquete_evidencia": None,
         "advertencias": [
             "La coincidencia con un agregador no certifica el prospecto.",
             "No se convierten ni mezclan especies O, C y D.",
@@ -517,12 +729,18 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             "Data912 no se considera una fuente independiente de CompararFondos.",
             "En especie O se distinguen precioARS (precio de especie) y precio (equivalente USD MEP usado por el agregador para TIR/paridad).",
             "La antigüedad de rueda se informa; no se aplica un umbral temporal arbitrario de bloqueo.",
+            "Nivel 1 significa dato recibido con trazabilidad; nivel 2 exige fuente independiente; nivel 3 exige respaldo documental oficial.",
+            "El hash SHA-256 acredita integridad del snapshot capturado, no veracidad económica del contenido.",
         ],
     }
 
     errores = []
+    metadata_capturas: Dict[str, Any] = {}
     try:
-        payload_cf = obtener_json(URL_COMPARARFONDOS)
+        payload_cf, metadata_cf = obtener_json_con_evidencia(
+            URL_COMPARARFONDOS, "CompararFondos", directorio_evidencia_run
+        )
+        metadata_capturas["CompararFondos"] = metadata_cf
         indice_cf = indice_por_ticker(payload_cf, "bonds")
         reporte["fuentes"]["CompararFondos"] = {
             "estado": "OK",
@@ -536,6 +754,7 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             "age_min": payload_cf.get("age_min") if isinstance(payload_cf, dict) else None,
             "rol": "Fuente primaria de mercado agregada (no fuente contractual)",
             "atribucion_requerida": True,
+            "captura_evidencia": metadata_cf,
         }
     except Exception as exc:
         indice_cf = {}
@@ -545,13 +764,17 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
         }
 
     try:
-        payload_d9 = obtener_json(URL_DATA912)
+        payload_d9, metadata_d9 = obtener_json_con_evidencia(
+            URL_DATA912, "Data912", directorio_evidencia_run
+        )
+        metadata_capturas["Data912"] = metadata_d9
         indice_d9 = indice_por_ticker(payload_d9, "")
         reporte["fuentes"]["Data912"] = {
             "estado": "OK",
             "url": URL_DATA912,
             "registros_recibidos": len(indice_d9),
             "rol": "Fuente relacionada dentro de la misma cadena; no independiente",
+            "captura_evidencia": metadata_d9,
         }
     except Exception as exc:
         indice_d9 = {}
@@ -578,12 +801,17 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
                 abs(precio_cf_comparable - d9["precio"]), 6
             )
 
+        evidencias = construir_evidencias_instrumento(
+            ticker, cf, maestro, indice_cf.get(ticker), indice_d9.get(ticker),
+            metadata_capturas.get("CompararFondos"), metadata_capturas.get("Data912")
+        )
         instrumento = {
             "ticker": ticker,
             "isin_maestro": maestro.get("isin"),
             "maestro_contractual": maestro,
             "mercado": cf,
             "corroboracion": d9,
+            "evidencia": evidencias,
             "diferencia_absoluta_precio_vs_data912": diferencias_precio,
             "control_consistencia_misma_cadena": {
                 "diferencia_absoluta": diferencias_precio,
@@ -611,6 +839,9 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
         reporte["estado_general"] = "CONSULTA_COMPLETADA_SIN_PRECIOS_VALIDOS"
 
     reporte["errores"] = errores
+    reporte["paquete_evidencia"] = crear_paquete_evidencia(
+        metadata_capturas, errores, directorio_evidencia_run, ARCHIVO_PAQUETE_EVIDENCIA
+    )
     reporte["control_publicacion"] = {
         "publicar_tir_y_duration": False,
         "motivo": "Este motor aún no recalcula independientemente la TIR ni certifica los flujos contra documentación contractual oficial.",
@@ -619,6 +850,12 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
             for i in reporte["instrumentos"]
         ) and bool(reporte["instrumentos"]),
         "nota": "precio_utilizable indica disponibilidad de mercado con reservas; no equivale a recomendación ni certificación contractual.",
+        "niveles_evidencia": {
+            "nivel_1": "Dato recibido, con origen, fecha de captura y hash del snapshot.",
+            "nivel_2": "Dato contrastado con fuente verdaderamente independiente.",
+            "nivel_3": "Dato validado contra documentación oficial identificada y revisada.",
+            "nivel_2_y_3_habilitados": False,
+        },
     }
     return reporte
 
@@ -633,6 +870,11 @@ def imprimir_resumen(reporte: Dict[str, Any]) -> None:
     print("FIBRX | ACTUALIZACIÓN DE OBLIGACIONES NEGOCIABLES")
     print("Consulta UTC:", reporte["fecha_consulta_utc"])
     print("Estado:", reporte["estado_general"])
+    print("Versión motor:", reporte.get("version_motor"))
+    paquete = reporte.get("paquete_evidencia") or {}
+    if paquete:
+        print("Paquete evidencia:", paquete.get("archivo"))
+        print("SHA-256 paquete:", paquete.get("sha256_paquete"))
     print("=" * 76)
     for item in reporte["instrumentos"]:
         m = item["mercado"]
@@ -642,6 +884,8 @@ def imprimir_resumen(reporte: Dict[str, Any]) -> None:
             f'Precio eq. API={m.get("precio_api_equivalente")} | '
             f'TIR API={m.get("tir_api_pct")} | Ops={m.get("operaciones")}'
         )
+        evidencia = item.get("evidencia", {})
+        print("  Evidencia:", evidencia.get("estado_global"), "| nivel:", evidencia.get("nivel_actual"))
         validacion = m.get("validacion_contractual", {})
         for diferencia in validacion.get("diferencias", []):
             print("  ALERTA:", diferencia)
@@ -656,6 +900,7 @@ def main() -> int:
         guardar_reporte(reporte)
         imprimir_resumen(reporte)
         print(f"Archivo generado: {os.path.abspath(ARCHIVO_SALIDA)}")
+        print(f"Paquete de evidencia: {os.path.abspath(ARCHIVO_PAQUETE_EVIDENCIA)}")
         if reporte["estado_general"] in {
             "SIN_FUENTE_PRIMARIA",
             "SIN_COINCIDENCIAS_EXACTAS_EN_FUENTE_PRIMARIA",
