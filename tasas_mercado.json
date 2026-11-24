@@ -1,6 +1,6 @@
 {
   "schema_version": 6,
-  "actualizado_el": "2026-11-23T19:45:53.259348+00:00",
+  "actualizado_el": "2026-11-24T14:18:49.260674+00:00",
   "fecha_datos_fuente": "2026-11-20T23:52:16.000Z",
   "estado_global": "DATOS_ARGENTINADATOS_UNA_FUENTE",
   "fuentes": [
@@ -31,8 +31,8 @@
     "criterio_moneda": "Solo especies D con tcType=MEP; se excluyen especies O/ARS y C/CCL.",
     "atribucion": "Al publicar estos datos debe mencionarse compararfondos.com.ar.",
     "error_consulta": null,
-    "cantidad_instrumentos_recibidos": 340,
-    "fecha_rueda": "2026-11-20"
+    "cantidad_instrumentos_recibidos": 441,
+    "fecha_rueda": "2026-11-24"
   },
   "obligaciones_negociables": [
     {
@@ -48,15 +48,15 @@
       "estructura": "Bullet",
       "frecuencia": "Semestral",
       "fuente_contractual": "Datos de Balanz informados por el usuario; corte 2026-11-20",
-      "precio": 100.25,
-      "tir": null,
-      "paridad": 99.48,
+      "precio": 100.4,
+      "tir": 7.11,
+      "paridad": 99.61,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 0.86,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 2,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -68,11 +68,11 @@
           "monto": 103.28
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -90,14 +90,14 @@
       "frecuencia": "Semestral",
       "fuente_contractual": "Datos de Balanz informados por el usuario; corte 2026-11-20",
       "precio": 102.85,
-      "tir": null,
-      "paridad": 99.97,
+      "tir": 8.43,
+      "paridad": 99.95,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 4.85,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 178,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -161,11 +161,11 @@
           "monto": 41.65
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -182,15 +182,15 @@
       "estructura": "Amortizable",
       "frecuencia": "Semestral",
       "fuente_contractual": "Datos de Balanz informados por el usuario; corte 2026-11-20",
-      "precio": 105.05,
-      "tir": null,
-      "paridad": 101.15,
+      "precio": 107.45,
+      "tir": 7.84,
+      "paridad": 103.43,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 4.38,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 8,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -250,11 +250,11 @@
           "monto": 35.449999999999996
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -272,15 +272,15 @@
       "estructura": null,
       "frecuencia": "Semestral (fechas observadas; contrato a validar)",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "precio": 99,
-      "tir": null,
-      "paridad": 97.1,
+      "precio": 98.81,
+      "tir": 8.68,
+      "paridad": 96.9,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 1.6,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": null,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -300,11 +300,11 @@
           "monto": 103.23
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -322,15 +322,15 @@
       "estructura": "Amortizable (por validar porcentajes)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "precio": 101.1,
-      "tir": null,
-      "paridad": 99.92,
+      "precio": 100.75,
+      "tir": 8.24,
+      "paridad": 99.55,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 5.62,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 103,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -402,11 +402,11 @@
           "monto": 35.36
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -426,7 +426,7 @@
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
       "precio": 95,
       "tir": null,
-      "paridad": 94.77,
+      "paridad": 94.75,
       "paridadBase": "valor tecnico",
       "duration": null,
       "moneda": "USD",
@@ -525,10 +525,10 @@
         }
       ],
       "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -546,15 +546,15 @@
       "estructura": "Bullet (pendiente de prospecto)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "precio": 95.5,
-      "tir": null,
-      "paridad": 93.48,
+      "precio": 94.98,
+      "tir": 10.38,
+      "paridad": 92.95,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 3.57,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 18,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -594,11 +594,11 @@
           "monto": 104.03
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -616,15 +616,15 @@
       "estructura": "Amortizable (por validar porcentajes)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "precio": 104.35,
-      "tir": null,
-      "paridad": 99.84,
+      "precio": 104,
+      "tir": 9.59,
+      "paridad": 99.48,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 4.52,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 37,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -684,11 +684,11 @@
           "monto": 52.31249999999999
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     },
@@ -706,15 +706,15 @@
       "estructura": "Amortizable (por validar porcentajes)",
       "frecuencia": "Semestral",
       "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
-      "precio": 96.7,
-      "tir": null,
-      "paridad": 95.76,
+      "precio": 96.29,
+      "tir": 8.75,
+      "paridad": 95.34,
       "paridadBase": "valor tecnico",
-      "duration": null,
+      "duration": 7.11,
       "moneda": "USD",
       "tcType": "MEP",
-      "operaciones": 0,
-      "precioStale": true,
+      "operaciones": 20,
+      "precioStale": false,
       "tirPocasOps": false,
       "flujos": [
         {
@@ -810,60 +810,60 @@
           "monto": 35.3387
         }
       ],
-      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
-      "fecha_rueda": "2026-11-20",
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
       "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
       "url_fuente": "https://compararfondos.com.ar/api/bonos",
-      "fecha_cotizacion": "2026-11-20",
+      "fecha_cotizacion": "2026-11-24",
       "nivel_validacion": "TICKER_EXACTO",
       "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
     }
   ],
   "diagnostico_obligaciones_negociables": {
     "CP36D": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "YM34D": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "VSCVD": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "AEC3D": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "IRCPD": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "MGCRD": {
       "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "PQCSD": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "TLCPD": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     },
     "VSCXD": {
-      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "estado": "COTIZACION_RECIBIDA",
       "coincidencias": 1,
-      "fecha_rueda": "2026-11-20"
+      "fecha_rueda": "2026-11-24"
     }
   },
   "vehiculos": [
