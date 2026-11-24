@@ -1378,7 +1378,7 @@ function calcUnico(pv,n,v){
 // ---------- Orquestador principal ----------
 let ultimaIntencion = null;
 
-function ejecutar(){
+async function ejecutar(){
   const item  = document.getElementById("item").value.trim() || "Sin nombre";
   const tipo  = document.getElementById("tipo").value;
   const monto = parseFloat(document.getElementById("monto").value);
@@ -1390,6 +1390,12 @@ function ejecutar(){
      !Number.isFinite(usos) || usos<0 || !Number.isFinite(ingreso) || ingreso<0){
      alert("Revisá los datos: monto positivo, meses enteros entre 1 y 360, usos e ingreso no negativos."); return;
    }
+
+  // Espera las cargas iniciadas al abrir la página: evita comparar antes de recibir FCI/ON.
+  const cargasPendientes = [PROMESA_CARGA_FCI, PROMESA_CARGA_ONS].filter(p => p && typeof p.then === "function");
+  if(cargasPendientes.length) await Promise.allSettled(cargasPendientes);
+  // Revalidación defensiva: la comparación usa el catálogo ya incorporado, no el estado previo a la descarga.
+  if(!Array.isArray(VEHICULOS)) VEHICULOS=[];
 
   ultimaIntencion = { item, tipo, monto, meses, usos, ingreso, fecha: new Date().toISOString() };
 
@@ -1602,10 +1608,11 @@ function renderCatalogoFCI(data){
     }
 
     const tna=Number(v.tna);
-    const tnaDisponible=Number.isFinite(tna)&&tna>0&&tna<=5;
+    const tnaInformada=Number.isFinite(tna)&&Math.abs(tna)<=5;
+    const tnaDisponible=tnaInformada&&tna>0;
     const monedaARS=monedaComparableFCI(v.moneda_fondo)==="ARS";
     const comparable=tnaDisponible&&monedaARS;
-    const tnaTxt=tnaDisponible?porcentajeFraccion(tna):"No disponible";
+    const tnaTxt=tnaInformada?porcentajeFraccion(tna):"No disponible";
     const rendimientos=[
       ["7 días",v.retorno_7d],
       ["30 días",v.retorno_30d],
@@ -1619,12 +1626,12 @@ function renderCatalogoFCI(data){
     return `<article class="fci-card">
       <div class="fci-head">
         <h3>${escHTML(nombre)}</h3>
-        <span class="badge ${comparable?"ok":"no-elegible"}">${comparable?"Incluido en Plan B ARS":(!monedaARS?"No comparable en ARS":"Tasa no disponible")}</span>
+        <span class="badge ${comparable?"ok":"no-elegible"}">${comparable?"Incluido en Plan B ARS":(!monedaARS?"No comparable en ARS":(tnaInformada&&tna<=0?"TNA negativa · no proyectada":"Tasa no disponible"))}</span>
       </div>
       <div class="fci-main-metric">
         <span class="fci-kicker">TNA estimada</span>
         <strong class="fci-tna">${escHTML(tnaTxt)}</strong>
-        ${!tnaDisponible?`<p class="fci-nota">La fuente no informa una TNA válida para esta clase. No se reemplaza por la tasa de otro fondo.</p>`:(!monedaARS?`<p class="fci-nota">Moneda informada: ${escHTML(v.moneda_fondo||"No informada")}. Se muestra en el catálogo, pero no se incorpora al Plan B en pesos.</p>`:"")}
+        ${!tnaInformada?`<p class="fci-nota">La fuente no informa una TNA válida para esta clase. No se reemplaza por la tasa de otro fondo.</p>`:(tna<=0?`<p class="fci-nota">TNA negativa informada por la fuente. Se conserva como dato, pero no se proyecta como acumulación positiva en Plan B.</p>`:(!monedaARS?`<p class="fci-nota">Moneda informada: ${escHTML(v.moneda_fondo||"No informada")}. Se muestra en el catálogo, pero no se incorpora al Plan B en pesos.</p>`:""))}
       </div>
       ${rendimientos.length?`<div class="fci-rendimientos" aria-label="Rendimientos históricos">
         ${rendimientos.map(([periodo,valor])=>`<div class="fci-rendimiento"><span>${escHTML(periodo)}</span><strong>${escHTML(porcentajePuntos(valor))}</strong></div>`).join("")}
@@ -1640,7 +1647,7 @@ function renderCatalogoFCI(data){
 
   const publicados=FCI_OBJETIVO.filter(x=>externos.has(x.id)).length;
   const conTasa=(Array.isArray(data?.vehiculos)?data.vehiculos:[])
-    .filter(v=>Number.isFinite(Number(v.tna))&&Number(v.tna)>0&&Number(v.tna)<=5).length;
+    .filter(v=>Number.isFinite(Number(v.tna))&&Math.abs(Number(v.tna))<=5).length;
   document.getElementById("estadoCatalogoFci").textContent=
     `${publicados} de ${FCI_OBJETIVO.length} fondos con datos · ${conTasa} con TNA disponible · Fuente: ArgentinaDatos`;
 }
@@ -1694,9 +1701,10 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
   if(fecha!=="Fecha no informada")el.dateTime=fecha;
   const recibidos=data.vehiculos.filter(v=>FCI_OBJETIVO.some(cfg=>cfg.id===v.id));
   const sinMonedaARS=recibidos.filter(v=>monedaComparableFCI(v.moneda_fondo)!=="ARS").length;
-  const sinTNA=recibidos.filter(v=>{const n=Number(v.tna);return !Number.isFinite(n)||n<=0||n>5;}).length;
+  const tnaNegativa=recibidos.filter(v=>v.tna!==null&&v.tna!==undefined&&v.tna!==""&&Number.isFinite(Number(v.tna))&&Number(v.tna)<0&&Math.abs(Number(v.tna))<=5).length;
+  const sinTNA=recibidos.filter(v=>{const n=Number(v.tna);return v.tna===null||v.tna===undefined||v.tna===""||!Number.isFinite(n)||n===0||Math.abs(n)>5;}).length;
   document.getElementById("estadoCatalogoFci").textContent=
-    `${recibidos.length} clases recibidas · ${actualizados.length} incorporadas al Plan B ARS · ${sinMonedaARS} excluidas por moneda no ARS/no informada · ${sinTNA} sin TNA utilizable`;
+    `${recibidos.length} clases recibidas · ${actualizados.length} incorporadas al Plan B ARS · ${sinMonedaARS} excluidas por moneda no ARS/no informada · ${tnaNegativa} con TNA negativa (visible, no proyectada) · ${sinTNA} sin TNA válida`;
   if(!actualizados.length)document.getElementById("origenTasas").textContent="Catálogo recibido, pero sin TNA ARS utilizable para calcular";
 }
 async function cargarTasasDelJSON(){
@@ -1721,11 +1729,18 @@ function cargarTasasDesdeArchivo(ev){
 
 // ---------- Presentación y carga independiente del catálogo de ON ----------
 let DATOS_ONS = null;
+let PROMESA_CARGA_FCI = null;
+let PROMESA_CARGA_ONS = null;
 function formatoNumeroON(value,max=2){
   const n=Number(value);
   return value!==null&&value!==undefined&&value!==""&&Number.isFinite(n)
     ? n.toLocaleString("es-AR",{minimumFractionDigits:max===0?0:2,maximumFractionDigits:max})
     : "No disponible";
+}
+function precioUnitarioON(precioBase100){
+  const n=Number(precioBase100);
+  return precioBase100!==null&&precioBase100!==undefined&&precioBase100!==""&&Number.isFinite(n)
+    ? n/100 : null;
 }
 function fechaHoraON(value){
   if(!value)return "Fecha no informada";
@@ -1744,12 +1759,13 @@ function renderCatalogoONS(data){
     const emisor=item?.maestro_contractual?.emisor||m?.emisor||"Emisor no informado";
     const nombre=m?.nombre||item?.ticker||"ON";
     const moneda=String(m?.moneda_precio_especie||m?.precio_especie_moneda||"");
-    const precioValor=m?.precio_especie;
-    let precioTexto="No publicable";
-    if(precioOK&&precioValor!==null&&precioValor!==undefined&&Number.isFinite(Number(precioValor))){
-      const prefijo=/ARS/i.test(moneda)?"ARS ":(/USD/i.test(moneda)?moneda+" ":(moneda?moneda+" ":""));
-      precioTexto=prefijo+formatoNumeroON(precioValor,2);
-    }
+    const precioBase100=m?.precio_especie;
+    const precioVN=precioUnitarioON(precioBase100);
+    const prefijo=/ARS/i.test(moneda)?"ARS ":(/USD/i.test(moneda)?moneda+" ":(moneda?moneda+" ":""));
+    const precioTexto=precioOK&&precioVN!==null
+      ? prefijo+formatoNumeroON(precioVN,4) : "No publicable";
+    const precioReferencia100=precioBase100!==null&&precioBase100!==undefined&&Number.isFinite(Number(precioBase100))
+      ? prefijo+formatoNumeroON(precioBase100,2)+" cada 100 VN" : "Base de cotización no informada";
     const tirTexto=tirOK?formatoNumeroON(m?.tir_api_pct,2)+"%":"No publicable";
     const durTexto=durationOK?formatoNumeroON(m?.duration_api,2)+" años":"No publicable";
     const estadoContrato=m?.validacion_contractual?.estado||c?.validacion_contractual?.estado||"PENDIENTE_VERIFICACION";
@@ -1773,7 +1789,7 @@ function renderCatalogoONS(data){
         <div><div class="on-ticker">${escHTML(item?.ticker)}</div><h3>${escHTML(nombre)}</h3><p class="dim">${escHTML(emisor)}</p></div>
         <span class="badge ${precioOK?"ok":"no-elegible"}">${precioOK?"Precio publicable":"Precio no publicable"}</span>
       </div>
-      <div class="on-precio"><span class="dim">Precio de negociación · ${escHTML(moneda||"moneda no informada")}</span><strong>${escHTML(precioTexto)}</strong></div>
+      <div class="on-precio"><span class="dim">Precio por 1 valor nominal (VN) · ${escHTML(moneda||"moneda no informada")}</span><strong>${escHTML(precioTexto)}</strong><small class="dim">Cotización API: ${escHTML(precioReferencia100)} · Base 100 VN</small></div>
       <div class="on-metricas">
         <div class="on-metrica"><span>TIR · CompararFondos</span><strong>${escHTML(tirTexto)}</strong></div>
         <div class="on-metrica"><span>Duration · CompararFondos</span><strong>${escHTML(durTexto)}</strong></div>
@@ -1816,9 +1832,12 @@ function renderComparacionONS(monto, meses){
     const tirOK=c?.tir_proveedor?.publicable===true;
     const durOK=c?.duration_proveedor?.publicable===true;
     const moneda=String(m?.moneda_precio_especie||m?.precio_especie_moneda||"No informada");
-    const precio=m?.precio_especie;
-    const precioTxt=precioOK&&precio!==null&&precio!==undefined&&Number.isFinite(Number(precio))
-      ? `${moneda} ${formatoNumeroON(precio,2)}` : "No publicable";
+    const precioBase100=m?.precio_especie;
+    const precioVN=precioOK?precioUnitarioON(precioBase100):null;
+    const precioTxt=precioVN!==null
+      ? `${moneda} ${formatoNumeroON(precioVN,4)}` : "No publicable";
+    const precioReferencia100=precioBase100!==null&&precioBase100!==undefined&&Number.isFinite(Number(precioBase100))
+      ? `${moneda} ${formatoNumeroON(precioBase100,2)} cada 100 VN` : "";
     const tir=tirOK&&m?.tir_api_pct!==null&&m?.tir_api_pct!==undefined
       ? `${formatoNumeroON(m.tir_api_pct,2)}%` : "No publicable";
     const duration=durOK&&m?.duration_api!==null&&m?.duration_api!==undefined
@@ -1842,7 +1861,7 @@ function renderComparacionONS(monto, meses){
     return `<article class="tarjeta on-card">
       <div class="on-card-head"><div><div class="on-ticker">${escHTML(item?.ticker||"ON")}</div><h3>${escHTML(m?.nombre||item?.ticker||"Obligación Negociable")}</h3></div>
       <span class="badge ${precioOK?"ok":"no-elegible"}">${precioOK?"Precio publicable":"Precio no publicable"}</span></div>
-      <div class="on-precio"><span class="dim">Precio de negociación</span><strong>${escHTML(precioTxt)}</strong></div>
+      <div class="on-precio"><span class="dim">Precio por 1 valor nominal (VN)</span><strong>${escHTML(precioTxt)}</strong><small class="dim">${escHTML(precioReferencia100)} · Cotización original normalizada desde base 100 VN</small></div>
       <div class="on-metricas">
         <div class="on-metrica"><span>TIR · CompararFondos</span><strong>${escHTML(tir)}</strong></div>
         <div class="on-metrica"><span>Duration · CompararFondos</span><strong>${escHTML(duration)}</strong></div>
@@ -1881,10 +1900,9 @@ renderEtapaActiva();
 calcPMV();
 renderDeudas();
 cargarPlanMov();
-cargarTasasDelJSON();
-cargarOnsDelJSON();
 renderRegistro();
-
+PROMESA_CARGA_FCI = cargarTasasDelJSON();
+PROMESA_CARGA_ONS = cargarOnsDelJSON();
 
 </script>
 </body>
