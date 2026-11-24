@@ -1,10 +1,11 @@
-name: Diagnóstico de ingesta ON FIBRX
+
+name: Actualización de ON FIBRX
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: fibrx-diagnostico-ons
@@ -14,9 +15,12 @@ jobs:
   diagnostico:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -46,14 +50,19 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+
           p = Path("ons_mercado.json")
+
           if not p.is_file() or p.stat().st_size == 0:
               print("No se generó ons_mercado.json")
               raise SystemExit(1)
+
           data = json.loads(p.read_text(encoding="utf-8"))
+
           print("JSON válido")
           print("Estado general:", data.get("estado_general"))
           print("Fecha UTC:", data.get("fecha_consulta_utc"))
+
           for item in data.get("instrumentos", []):
               mercado = item.get("mercado", {})
               print(
@@ -66,6 +75,23 @@ jobs:
                   "| indicadores utilizables:", mercado.get("indicadores_utilizables"),
               )
           PY
+
+      - name: Publicar JSON de ON en el repositorio
+        if: steps.ingesta.outputs.exit_code == '0' && steps.validar.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add ons_mercado.json
+
+          if git diff --cached --quiet; then
+            echo "El JSON no presenta cambios. No se necesita un nuevo commit."
+          else
+            git commit -m "Actualizar datos de mercado ON"
+            git pull --rebase origin main
+            git push origin HEAD:main
+            echo "JSON de ON publicado correctamente en main."
+          fi
 
       - name: Guardar JSON como artefacto de diagnóstico
         if: always() && hashFiles('ons_mercado.json') != ''
@@ -80,8 +106,11 @@ jobs:
         if: always()
         run: |
           code='${{ steps.ingesta.outputs.exit_code }}'
+
           if [ "$code" != "0" ]; then
-            echo "El motor terminó con código $code. Revisar el JSON de diagnóstico y los logs."
+            echo "El motor terminó con código $code. Revisar los logs."
             exit 1
           fi
-          echo "El motor terminó correctamente. Revisar el artefacto diagnostico-ons-fibrx."
+
+          echo "El motor terminó correctamente."
+          echo "Verificar ons_mercado.json en el repositorio."
