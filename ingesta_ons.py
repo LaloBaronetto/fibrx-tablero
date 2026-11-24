@@ -1,427 +1,492 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-FIBRX | Diagnóstico independiente de Obligaciones Negociables (ON)
+FIBRX | Ingesta y validación de Obligaciones Negociables.
 
-Etapa de descubrimiento y cobertura:
-- Consulta CompararFondos y Data912.
-- Busca por ticker exacto, ISIN, emisor y año de vencimiento.
-- Distingue coincidencias exactas de candidatos por texto.
-- No convierte automáticamente especies O/C a D.
-- No calcula TIR, duration ni flujos propios.
-- No modifica ingesta_tasas.py ni escribe tasas_mercado.json.
+Objetivo:
+- Consultar fuentes externas al ejecutar el script.
+- Actualizar precio/indicadores desde CompararFondos.
+- Corroborar cotización con Data912, que su propia documentación califica
+  como educativa/no necesariamente real; nunca se usa como fuente primaria.
+- Validar datos públicos contra el maestro contractual local.
+- No inventar datos ni mapear especies O/C/D automáticamente.
+- Generar JSON con trazabilidad, alertas y fecha de consulta.
 
-Uso:
-    python ingesta_ons.py
+Fuentes:
+  CompararFondos: https://compararfondos.com.ar/api/bonos
+  Data912 (corroboración no autoritativa): https://data912.com/live/arg_corp
+
+IMPORTANTE:
+CompararFondos es un agregador público, no el prospecto ni BYMA directamente.
+La validación contractual final requiere prospecto/resolución oficial del emisor.
+El script conserva el maestro contractual recibido; sus datos no quedan
+"certificados" por el mero hecho de que una API coincida.
 """
 
 from __future__ import annotations
 
 import json
-import re
+import math
+import os
 import sys
-import unicodedata
-from urllib.error import HTTPError, URLError
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 
 
-TIMEOUT = 35
 URL_COMPARARFONDOS = "https://compararfondos.com.ar/api/bonos"
 URL_DATA912 = "https://data912.com/live/arg_corp"
+TIMEOUT_SEGUNDOS = 20
+ARCHIVO_SALIDA = os.environ.get("FIBRX_ON_OUTPUT", "ons_mercado.json")
 
-# Los tickers D de las seis emisiones adicionales son hipótesis de búsqueda.
-# Su presencia en una API no confirma por sí sola ISIN, moneda ni equivalencia.
-INSTRUMENTOS = [
-    {
-        "ticker_referencia": "CP36D",
-        "tickers_busqueda": ["CP36D"],
-        "isin": "AR0015464982",
-        "emisor": "Compania General de Combustibles",
-        "alias_emisor": ["CGC", "Compania General de Combustibles", "Compania General de Combustible"],
-        "anio_vencimiento": 2027,
-        "descripcion": "CGC Clase 36",
-        "especie_d_confirmada_por_usuario": True,
-    },
-    {
-        "ticker_referencia": "YM34D",
-        "tickers_busqueda": ["YM34D"],
+# No se agregan equivalencias O/C/D. Cada símbolo debe existir en forma exacta.
+# Estos cuatro contratos proceden del archivo entregado por el usuario y
+# requieren contraste documental oficial antes de ser considerados definitivos.
+MAESTRO_CONTRACTUAL: Dict[str, Dict[str, Any]] = {
+    "YM34D": {
         "isin": "USP989MJBY67",
-        "emisor": "YPF",
-        "alias_emisor": ["YPF", "YPF Sociedad Anonima"],
-        "anio_vencimiento": 2034,
-        "descripcion": "YPF Clase XXXIV",
-        "especie_d_confirmada_por_usuario": True,
+        "emisor": "YPF S.A.",
+        "tna": 8.25,
+        "frecuencia_pago": "Semestral",
+        "meses_pago": [1, 7],
+        "fecha_vencimiento": "2034-01-17",
+        "cronograma_amortizacion": [
+            ("2032-01-17", 0.30), ("2033-01-17", 0.30), ("2034-01-17", 0.40)
+        ],
+        "fuente_contractual": "Maestro heredado del archivo del usuario; pendiente de prospecto oficial",
+        "estado_documental": "PENDIENTE_VERIFICACION_OFICIAL",
     },
-    {
-        "ticker_referencia": "VSCVD",
-        "tickers_busqueda": ["VSCVD"],
-        "isin": "USP9659RAB44",
-        "emisor": "Vista Energy Argentina",
-        "alias_emisor": ["Vista Energy", "Vista Energy Argentina", "Vista Argentina"],
-        "anio_vencimiento": 2033,
-        "descripcion": "Vista Clase XXIX",
-        "especie_d_confirmada_por_usuario": True,
+    "AEC3O": {
+        "isin": "AR0382592001",
+        "emisor": "AES Argentina",
+        "tna": 6.47,
+        "frecuencia_pago": "Semestral",
+        "meses_pago": [2, 8],
+        "fecha_vencimiento": "2028-08-06",
+        "cronograma_amortizacion": [("2028-08-06", 1.00)],
+        "fuente_contractual": "Maestro heredado del archivo del usuario; pendiente de prospecto oficial",
+        "estado_documental": "PENDIENTE_VERIFICACION_OFICIAL",
     },
-    {
-        "ticker_referencia": "AEC3O",
-        "tickers_busqueda": ["AEC3O", "AEC3D"],
-        "isin": None,
-        "emisor": "AES Argentina Generacion",
-        "alias_emisor": ["AES Argentina", "AES Argentina Generacion", "AES Generacion"],
-        "anio_vencimiento": 2028,
-        "descripcion": "AES Argentina Generacion Clase 3",
-        "especie_d_confirmada_por_usuario": False,
+    "IRCPO": {
+        "isin": "USP58809BU07",
+        "emisor": "IRSA",
+        "tna": 8.00,
+        "frecuencia_pago": "Semestral",
+        "meses_pago": [3, 9],
+        "fecha_vencimiento": "2035-03-25",
+        "cronograma_amortizacion": [
+            ("2033-03-25", 0.33), ("2034-03-25", 0.33), ("2035-03-25", 0.34)
+        ],
+        "fuente_contractual": "Maestro heredado del archivo del usuario; pendiente de prospecto oficial",
+        "estado_documental": "PENDIENTE_VERIFICACION_OFICIAL",
     },
-    {
-        "ticker_referencia": "IRCPO",
-        "tickers_busqueda": ["IRCPO", "IRCPD"],
-        "isin": None,
-        "emisor": "IRSA Inversiones",
-        "alias_emisor": ["IRSA", "IRSA Inversiones", "IRSA Propiedades Comerciales"],
-        "anio_vencimiento": 2035,
-        "descripcion": "IRSA 8% 2035",
-        "especie_d_confirmada_por_usuario": False,
-    },
-    {
-        "ticker_referencia": "MGCRO",
-        "tickers_busqueda": ["MGCRO", "MGCRD"],
-        "isin": None,
-        "emisor": "Pampa Energia",
-        "alias_emisor": ["Pampa", "Pampa Energia", "Pampa Energia S.A."],
-        "anio_vencimiento": 2037,
-        "descripcion": "Pampa Energia 7,75% 2037",
-        "especie_d_confirmada_por_usuario": False,
-    },
-    {
-        "ticker_referencia": "PQCSO",
-        "tickers_busqueda": ["PQCSO", "PQCSD"],
-        "isin": None,
-        "emisor": "Petroquimica Comodoro Rivadavia",
-        "alias_emisor": ["PCR", "Petroquimica", "Petroquimica Comodoro Rivadavia"],
-        "anio_vencimiento": 2031,
-        "descripcion": "Petroquimica Clase S",
-        "especie_d_confirmada_por_usuario": False,
-    },
-    {
-        "ticker_referencia": "TLCPO",
-        "tickers_busqueda": ["TLCPO", "TLCPD"],
-        "isin": None,
+    "TLCPO": {
+        "isin": "USP9028NCA74",
         "emisor": "Telecom Argentina",
-        "alias_emisor": ["Telecom", "Telecom Argentina"],
-        "anio_vencimiento": 2033,
-        "descripcion": "Telecom Argentina 9,25% 2033",
-        "especie_d_confirmada_por_usuario": False,
+        "tna": 9.25,
+        "frecuencia_pago": "Semestral",
+        "meses_pago": [5, 11],
+        "fecha_vencimiento": "2033-05-28",
+        "cronograma_amortizacion": [
+            ("2032-05-28", 0.50), ("2033-05-28", 0.50)
+        ],
+        "fuente_contractual": "Maestro heredado del archivo del usuario; pendiente de prospecto oficial",
+        "estado_documental": "PENDIENTE_VERIFICACION_OFICIAL",
     },
-    {
-        "ticker_referencia": "VSCXO",
-        "tickers_busqueda": ["VSCXO", "VSCXD"],
-        "isin": None,
-        "emisor": "Vista Energy Argentina",
-        "alias_emisor": ["Vista Energy", "Vista Energy Argentina", "Vista Argentina"],
-        "anio_vencimiento": 2038,
-        "descripcion": "Vista Energy 7,875% 2038",
-        "especie_d_confirmada_por_usuario": False,
-    },
-]
-
-CAMPOS_TEXTO = (
-    "ticker", "symbol", "nombre", "name", "emisor", "issuer",
-    "descripcion", "description", "isin", "especie", "moneda",
-    "currency", "vencimiento", "maturity",
-)
-
-CAMPOS_SALIDA_COMPARAR = (
-    "ticker", "nombre", "tipo", "emisor", "isin", "moneda", "tcType",
-    "pagoEn", "precio", "precioARS", "precioStale", "operaciones",
-    "tir", "tirEsReal", "tirPocasOps", "tirMonedaCruzada", "paridad",
-    "duration", "vencimiento", "valorTecnico", "capitalResidual",
-)
-
-CAMPOS_SALIDA_DATA912 = (
-    "symbol", "c", "v", "q_bid", "px_bid", "px_ask", "q_ask",
-    "q_op", "pct_change",
-)
+}
 
 
-def normalizar(valor) -> str:
-    """Normaliza texto para comparar nombres sin depender de tildes o mayúsculas."""
-    if valor is None:
-        return ""
-    texto = unicodedata.normalize("NFKD", str(valor))
-    texto = "".join(c for c in texto if not unicodedata.combining(c))
-    texto = texto.upper()
-    return re.sub(r"[^A-Z0-9]", "", texto)
+def ahora_utc() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def obtener_anio_vencimiento(registro: dict):
-    for campo in ("vencimiento", "maturity", "fechaVencimiento", "fecha_vencimiento"):
-        valor = registro.get(campo)
-        if valor is None:
-            continue
-        coincidencia = re.search(r"(?:19|20)\d{2}", str(valor))
-        if coincidencia:
-            return int(coincidencia.group(0))
-    return None
-
-
-def fetch_json(url: str):
-    request = Request(
+def obtener_json(url: str) -> Any:
+    req = Request(
         url,
         headers={
-            "User-Agent": "FIBRX-ON-Diagnostic/1.0",
+            "User-Agent": "FIBRX-ON-Research/1.0 (educational financial data)",
             "Accept": "application/json",
         },
     )
+    with urlopen(req, timeout=TIMEOUT_SEGUNDOS) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP {response.status} consultando {url}")
+        raw = response.read()
+    return json.loads(raw.decode("utf-8"))
+
+
+def normalizar_numero(valor: Any) -> Optional[float]:
+    if valor is None or isinstance(valor, bool):
+        return None
     try:
-        with urlopen(request, timeout=TIMEOUT) as response:
-            contenido = response.read().decode("utf-8")
-            return json.loads(contenido), None
-    except HTTPError as exc:
-        return None, f"HTTP {exc.code}: {exc.reason}"
-    except URLError as exc:
-        return None, f"Error de conexión: {exc.reason}"
-    except TimeoutError:
-        return None, f"Tiempo de espera agotado ({TIMEOUT}s)"
-    except json.JSONDecodeError as exc:
-        return None, f"Respuesta no JSON: {exc}"
-    except Exception as exc:
-        return None, f"{type(exc).__name__}: {exc}"
+        n = float(valor)
+    except (TypeError, ValueError):
+        return None
+    return n if math.isfinite(n) else None
 
 
-def extraer_bonos_compararfondos(payload):
+def normalizar_fecha(valor: Any) -> Optional[str]:
+    if not valor:
+        return None
+    try:
+        return datetime.fromisoformat(str(valor)[:10]).date().isoformat()
+    except ValueError:
+        return None
+
+
+def indice_por_ticker(payload: Any, clave_lista: str) -> Dict[str, Dict[str, Any]]:
     if isinstance(payload, dict):
-        bonos = payload.get("bonds")
-        rueda = payload.get("rueda")
-        if isinstance(bonos, list):
-            return bonos, rueda
-        # Compatibilidad defensiva ante cambios de nombre en el endpoint.
-        for clave in ("bonos", "data", "resultados", "results"):
-            if isinstance(payload.get(clave), list):
-                return payload[clave], rueda
-    if isinstance(payload, list):
-        return payload, None
-    return [], None
-
-
-def extraer_registros_data912(payload):
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        for clave in ("data", "results", "bonos", "bonds"):
-            if isinstance(payload.get(clave), list):
-                return payload[clave]
-    return []
-
-
-def compactar(registro: dict, campos) -> dict:
-    return {campo: registro.get(campo) for campo in campos if campo in registro}
-
-
-def texto_registro(registro: dict) -> str:
-    partes = []
-    for campo in CAMPOS_TEXTO:
-        valor = registro.get(campo)
-        if valor is not None:
-            partes.append(str(valor))
-    return normalizar(" ".join(partes))
-
-
-def buscar_coincidencias(instrumento: dict, catalogo: list[dict]):
-    """
-    Devuelve coincidencias ordenadas por fuerza:
-    1) ticker exacto;
-    2) ISIN exacto;
-    3) emisor + año de vencimiento;
-    4) emisor sin año (candidato débil).
-    """
-    tickers = {normalizar(x) for x in instrumento["tickers_busqueda"]}
-    isin_objetivo = normalizar(instrumento.get("isin"))
-    alias = [normalizar(x) for x in instrumento["alias_emisor"] if normalizar(x)]
-    anio_objetivo = instrumento.get("anio_vencimiento")
-
-    resultados = []
-    vistos = set()
-
-    for registro in catalogo:
-        if not isinstance(registro, dict):
+        items = payload.get(clave_lista, [])
+    elif isinstance(payload, list):
+        items = payload
+    else:
+        items = []
+    resultado = {}
+    for item in items:
+        if not isinstance(item, dict):
             continue
+        ticker = str(item.get("ticker") or item.get("symbol") or "").strip().upper()
+        if ticker:
+            resultado[ticker] = item
+    return resultado
 
-        ticker = normalizar(registro.get("ticker") or registro.get("symbol"))
-        isin_registro = normalizar(registro.get("isin") or registro.get("ISIN"))
-        anio_registro = obtener_anio_vencimiento(registro)
-        texto = texto_registro(registro)
 
-        razones = []
-        nivel = 0
+def validar_flujos_api(flujos: Any, vencimiento: Optional[str]) -> Dict[str, Any]:
+    """Valida estructura y orden; no presume que un flujo API sea un prospecto."""
+    if not isinstance(flujos, list) or not flujos:
+        return {"valido": False, "motivo": "API sin flujos futuros utilizables"}
 
-        if ticker and ticker in tickers:
-            razones.append("TICKER_EXACTO")
-            nivel = max(nivel, 100)
+    fechas = []
+    montos = []
+    for flujo in flujos:
+        if not isinstance(flujo, dict):
+            return {"valido": False, "motivo": "Formato de flujo inválido"}
+        fecha = normalizar_fecha(flujo.get("fecha"))
+        monto = normalizar_numero(flujo.get("monto"))
+        if fecha is None or monto is None or monto < 0:
+            return {"valido": False, "motivo": "Flujo con fecha/monto inválido"}
+        fechas.append(fecha)
+        montos.append(monto)
 
-        if isin_objetivo and isin_registro and isin_objetivo == isin_registro:
-            razones.append("ISIN_EXACTO")
-            nivel = max(nivel, 95)
+    if fechas != sorted(fechas) or len(fechas) != len(set(fechas)):
+        return {"valido": False, "motivo": "Flujos desordenados o fechas duplicadas"}
+    if vencimiento and fechas[-1] != vencimiento:
+        return {
+            "valido": False,
+            "motivo": f"Último flujo API ({fechas[-1]}) no coincide con vencimiento ({vencimiento})",
+        }
+    return {
+        "valido": True,
+        "cantidad": len(fechas),
+        "fecha_primer_flujo": fechas[0],
+        "fecha_ultimo_flujo": fechas[-1],
+        "suma_montos_futuros": round(sum(montos), 8),
+    }
 
-        emisor_coincide = any(a in texto for a in alias)
-        if emisor_coincide and anio_objetivo and anio_registro == anio_objetivo:
-            razones.append("EMISOR_Y_ANIO_DE_VENCIMIENTO")
-            nivel = max(nivel, 80)
-        elif emisor_coincide:
-            razones.append("EMISOR_COINCIDENTE_SIN_VALIDAR_VENCIMIENTO")
-            nivel = max(nivel, 50)
 
-        if not razones:
-            continue
+def comparar_contrato(ticker: str, api: Dict[str, Any],
+                      maestro: Dict[str, Any]) -> Dict[str, Any]:
+    diferencias = []
 
-        clave = (
-            str(registro.get("ticker") or registro.get("symbol") or ""),
-            str(registro.get("isin") or registro.get("ISIN") or ""),
-            str(registro.get("nombre") or registro.get("name") or ""),
+    venc_api = normalizar_fecha(api.get("vencimiento"))
+    venc_maestro = normalizar_fecha(maestro.get("fecha_vencimiento"))
+    if venc_api and venc_api != venc_maestro:
+        diferencias.append(
+            f"Vencimiento distinto: API={venc_api}; maestro={venc_maestro}"
         )
-        if clave in vistos:
-            continue
-        vistos.add(clave)
 
-        resultados.append({
-            "nivel": nivel,
-            "razones": razones,
-            "registro": registro,
-        })
+    emisor_api = str(api.get("emisor") or "").strip().lower()
+    emisor_maestro = str(maestro.get("emisor") or "").strip().lower()
+    if emisor_api and emisor_maestro:
+        # Comparación tolerante a razón social ampliada, sin aceptar emisor ajeno.
+        tokens = [t for t in emisor_maestro.replace(".", "").split() if len(t) > 2]
+        if not any(token in emisor_api for token in tokens):
+            diferencias.append(
+                f"Emisor no coincide: API={api.get('emisor')}; maestro={maestro.get('emisor')}"
+            )
 
-    resultados.sort(key=lambda x: x["nivel"], reverse=True)
-    return resultados
+    validacion_flujos = validar_flujos_api(api.get("flujos"), venc_api)
+    if not validacion_flujos["valido"]:
+        diferencias.append(validacion_flujos["motivo"])
 
-
-def indice_por_ticker(registros, campo):
-    indice = {}
-    for registro in registros:
-        if isinstance(registro, dict) and registro.get(campo):
-            indice[normalizar(registro[campo])] = registro
-    return indice
-
-
-def ejecutar_compararfondos():
-    print("\n" + "=" * 78)
-    print("FUENTE 1 | COMPARARFONDOS")
-    print("=" * 78)
-
-    payload, error = fetch_json(URL_COMPARARFONDOS)
-    if error:
-        print(f"No se pudo consultar CompararFondos: {error}")
-        return None
-
-    catalogo, rueda = extraer_bonos_compararfondos(payload)
-    if not catalogo:
-        print("La API respondió, pero no se identificó una lista de bonos.")
-        if isinstance(payload, dict):
-            print("Claves recibidas:", ", ".join(map(str, payload.keys())))
-        return None
-
-    print(f"Registros recibidos: {len(catalogo)}")
-    if rueda is not None:
-        print("Metadatos de rueda:", json.dumps(rueda, ensure_ascii=False, default=str))
-
-    for instrumento in INSTRUMENTOS:
-        coincidencias = buscar_coincidencias(instrumento, catalogo)
-        print(f"\n{instrumento['ticker_referencia']} | {instrumento['descripcion']}")
-        if not coincidencias:
-            print("  Sin coincidencias por ticker, ISIN, emisor o año de vencimiento.")
-            continue
-
-        for item in coincidencias[:8]:
-            registro = item["registro"]
-            if item["nivel"] >= 95:
-                clasificacion = "COINCIDENCIA FUERTE (ticker/ISIN)"
-            elif item["nivel"] >= 80:
-                clasificacion = "CANDIDATO (emisor + año)"
-            else:
-                clasificacion = "CANDIDATO DÉBIL (solo emisor)"
-
-            print(f"  [{clasificacion}]")
-            print("  Motivo:", ", ".join(item["razones"]))
-            print("  Datos:", json.dumps(
-                compactar(registro, CAMPOS_SALIDA_COMPARAR),
-                ensure_ascii=False,
-                default=str,
-            ))
-
-    return catalogo
+    # Comparación básica de cupón/amortización sólo si el proveedor entrega
+    # datos estructurados para ello. La API actual no siempre lo hace.
+    return {
+        "ticker_exacto": ticker,
+        "vencimiento_api": venc_api,
+        "vencimiento_maestro": venc_maestro,
+        "emisor_api": api.get("emisor"),
+        "emisor_maestro": maestro.get("emisor"),
+        "flujos_api": validacion_flujos,
+        "diferencias": diferencias,
+        "estado": "CONFLICTO" if diferencias else "COINCIDE_EN_CAMPOS_DISPONIBLES",
+        "estado_documental_maestro": maestro.get("estado_documental"),
+    }
 
 
-def ejecutar_data912():
-    print("\n" + "=" * 78)
-    print("FUENTE 2 | DATA912 (REFERENCIA SECUNDARIA)")
-    print("=" * 78)
+def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
+                           maestro: Dict[str, Any]) -> Dict[str, Any]:
+    if not registro:
+        return {
+            "ticker": ticker,
+            "estado": "SIN_COINCIDENCIA_EXACTA_EN_API",
+            "fuente": "CompararFondos",
+        }
 
-    payload, error = fetch_json(URL_DATA912)
-    if error:
-        print(f"No se pudo consultar Data912: {error}")
-        return None
+    moneda = str(registro.get("moneda") or "").upper()
+    tc_type = str(registro.get("tcType") or "").upper()
+    ticker_devuelto = str(registro.get("ticker") or "").upper()
 
-    registros = extraer_registros_data912(payload)
-    if not registros:
-        print("La API respondió, pero no se identificó una lista de instrumentos.")
-        return None
-
-    print(f"Registros recibidos: {len(registros)}")
-    indice = indice_por_ticker(registros, "symbol")
-
-    for instrumento in INSTRUMENTOS:
-        print(f"\n{instrumento['ticker_referencia']} | {instrumento['descripcion']}")
-        encontrados = []
-        for ticker in instrumento["tickers_busqueda"]:
-            registro = indice.get(normalizar(ticker))
-            if registro and registro not in encontrados:
-                encontrados.append(registro)
-
-        if not encontrados:
-            print("  Sin coincidencia por símbolo exacto.")
-            continue
-
-        for registro in encontrados:
-            print("  Símbolo encontrado:", json.dumps(
-                compactar(registro, CAMPOS_SALIDA_DATA912),
-                ensure_ascii=False,
-                default=str,
-            ))
-
-    print(
-        "\nAdvertencia: Data912 se utiliza como referencia secundaria de cotización/"
-        "puntas/volumen. No se usa para calcular TIR ni para confirmar ISIN, moneda "
-        "o equivalencia económica."
+    # Se rechaza cualquier sustitución de especie. También se comprueba
+    # que una especie D sea liquidable MEP según el campo publicado.
+    liquidacion_esperada = (
+        "MEP" if ticker.endswith("D")
+        else "CCL" if ticker.endswith("C")
+        else "ARS" if ticker.endswith("O")
+        else None
     )
-    return registros
+    if ticker_devuelto != ticker:
+        estado_especie = "RECHAZADO_TICKER_NO_EXACTO"
+    elif liquidacion_esperada is None:
+        estado_especie = "ESPECIE_NO_RECONOCIDA"
+    elif tc_type != liquidacion_esperada:
+        estado_especie = "RECHAZADO_TIPO_LIQUIDACION_INCOMPATIBLE"
+    else:
+        estado_especie = "ESPECIE_Y_LIQUIDACION_COINCIDENTES"
+
+    validacion = comparar_contrato(ticker, registro, maestro)
+    precio = normalizar_numero(registro.get("precio"))
+    operaciones = normalizar_numero(registro.get("operaciones"))
+    stale = bool(registro.get("precioStale", False))
+    tir = normalizar_numero(registro.get("tir"))
+    duration = normalizar_numero(registro.get("duration"))
+
+    precio_utilizable = (
+        estado_especie == "ESPECIE_Y_LIQUIDACION_COINCIDENTES"
+        and validacion["estado"] != "CONFLICTO"
+        and precio is not None
+        and precio > 0
+        and not stale
+        and operaciones is not None
+        and operaciones > 0
+    )
+
+    if validacion["estado"] == "CONFLICTO":
+        estado = "BLOQUEADO_CONFLICTO_CONTRACTUAL"
+    elif estado_especie != "ESPECIE_Y_LIQUIDACION_COINCIDENTES":
+        estado = estado_especie
+    elif stale or not operaciones:
+        estado = "PRECIO_SIN_OPERACIONES_RECIENTES"
+    elif precio_utilizable:
+        estado = "PRECIO_API_UTILIZABLE_CON_RESERVAS"
+    else:
+        estado = "DATOS_INSUFICIENTES"
+
+    return {
+        "ticker": ticker,
+        "estado": estado,
+        "fuente": "CompararFondos API",
+        "url_fuente": URL_COMPARARFONDOS,
+        "nombre": registro.get("nombre"),
+        "emisor": registro.get("emisor"),
+        "moneda_denominacion_api": moneda,
+        "tcType": tc_type,
+        "moneda_precio": (
+            "USD MEP" if tc_type == "MEP"
+            else "USD CCL" if tc_type == "CCL"
+            else "ARS" if tc_type == "ARS"
+            else "NO DETERMINADA"
+        ),
+        "ley": registro.get("ley"),
+        "precio": precio,
+        "precioStale": stale,
+        "operaciones": operaciones,
+        "volume": normalizar_numero(registro.get("volume")),
+        "tir_api_pct": tir,
+        "tirEsReal": bool(registro.get("tirEsReal", False)),
+        "tirStale": bool(registro.get("tirStale", False)),
+        "tirPocasOps": bool(registro.get("tirPocasOps", False)),
+        "tirMonedaCruzada": bool(registro.get("tirMonedaCruzada", False)),
+        "duration_api": duration,
+        "paridad": normalizar_numero(registro.get("paridad")),
+        "paridadBase": registro.get("paridadBase"),
+        "valorTecnico": normalizar_numero(registro.get("valorTecnico")),
+        "capitalResidual": normalizar_numero(registro.get("capitalResidual")),
+        "vencimiento_api": normalizar_fecha(registro.get("vencimiento")),
+        "pagoEn": registro.get("pagoEn"),
+        "nextCoupon": registro.get("nextCoupon"),
+        "flujos": registro.get("flujos"),
+        "validacion_contractual": validacion,
+        "precio_utilizable": precio_utilizable,
+        "indicadores_utilizables": (
+            precio_utilizable
+            and tir is not None
+            and not bool(registro.get("tirStale", False))
+            and not bool(registro.get("tirPocasOps", False))
+            and not bool(registro.get("tirMonedaCruzada", False))
+        ),
+        "nota": (
+            "Indicadores provistos por agregador externo; no equivalen a una "
+            "cotización oficial directa ni sustituyen el prospecto."
+        ),
+    }
 
 
-def imprimir_resumen():
-    print("\n" + "=" * 78)
-    print("CRITERIOS DE INTERPRETACIÓN")
-    print("=" * 78)
-    print("- Ticker o ISIN exacto: coincidencia fuerte, pendiente de validar especie y moneda.")
-    print("- Emisor + año: candidato de identificación; no confirma que sea la misma emisión.")
-    print("- Emisor sin año: candidato débil; requiere revisión manual.")
-    print("- Los tickers terminados en O no se transforman automáticamente en D.")
-    print("- precioStale indica que el precio puede ser de una rueda anterior; no se presenta")
-    print("  como cotización actual.")
-    print("- TIR, duration y paridad se muestran solo si la fuente las informa.")
-    print("- Este diagnóstico no modifica archivos ni genera tasas_mercado.json.")
+def evaluar_data912(ticker: str, registro: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not registro:
+        return {"ticker": ticker, "estado": "SIN_COINCIDENCIA", "fuente": "Data912"}
+
+    return {
+        "ticker": ticker,
+        "estado": "SOLO_CORROBORACION_NO_AUTORITATIVA",
+        "fuente": "Data912",
+        "url_fuente": URL_DATA912,
+        "precio": normalizar_numero(registro.get("c")),
+        "operaciones": normalizar_numero(registro.get("q_op")),
+        "volumen": normalizar_numero(registro.get("v")),
+        "bid": normalizar_numero(registro.get("px_bid")),
+        "ask": normalizar_numero(registro.get("px_ask")),
+        "nota": (
+            "La documentación de Data912 indica que sus datos son educativos "
+            "y no necesariamente reales/en tiempo real. No se usa para publicar "
+            "precio, TIR ni duration como dato validado."
+        ),
+    }
 
 
-def main():
-    print("FIBRX | MOTOR INDEPENDIENTE DE DIAGNÓSTICO DE ON")
-    print("Objetivo: ampliar cobertura de identificación sin alterar el motor de FCI.")
+def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
+    tickers = [t.upper() for t in (tickers or list(MAESTRO_CONTRACTUAL))]
+    desconocidos = [t for t in tickers if t not in MAESTRO_CONTRACTUAL]
+    if desconocidos:
+        raise KeyError(
+            "No hay maestro contractual explícito para: "
+            + ", ".join(desconocidos)
+            + ". No se aplican alias automáticos."
+        )
 
-    resultado_cf = ejecutar_compararfondos()
-    resultado_d912 = ejecutar_data912()
-    imprimir_resumen()
+    reporte = {
+        "producto": "FIBRX | Motor de ON",
+        "fecha_consulta_utc": ahora_utc(),
+        "estado_general": "INICIALIZANDO",
+        "fuentes": {},
+        "instrumentos": [],
+        "advertencias": [
+            "La coincidencia con un agregador no certifica el prospecto.",
+            "No se convierten ni mezclan especies O, C y D.",
+            "No se utilizan datos de cartera privada.",
+            "Data912 se conserva sólo como corroboración no autoritativa.",
+        ],
+    }
 
-    if resultado_cf is None and resultado_d912 is None:
-        print("\nRESULTADO: no fue posible obtener datos de ninguna de las dos fuentes.")
+    errores = []
+    try:
+        payload_cf = obtener_json(URL_COMPARARFONDOS)
+        indice_cf = indice_por_ticker(payload_cf, "bonds")
+        reporte["fuentes"]["CompararFondos"] = {
+            "estado": "OK",
+            "url": URL_COMPARARFONDOS,
+            "registros_recibidos": len(indice_cf),
+            "rol": "Fuente primaria de mercado agregada",
+            "atribucion_requerida": True,
+        }
+    except Exception as exc:
+        indice_cf = {}
+        errores.append(f"CompararFondos: {type(exc).__name__}: {exc}")
+        reporte["fuentes"]["CompararFondos"] = {
+            "estado": "ERROR", "detalle": str(exc), "url": URL_COMPARARFONDOS
+        }
+
+    try:
+        payload_d9 = obtener_json(URL_DATA912)
+        indice_d9 = indice_por_ticker(payload_d9, "")
+        reporte["fuentes"]["Data912"] = {
+            "estado": "OK",
+            "url": URL_DATA912,
+            "registros_recibidos": len(indice_d9),
+            "rol": "Corroboración no autoritativa; no habilita publicación",
+        }
+    except Exception as exc:
+        indice_d9 = {}
+        errores.append(f"Data912: {type(exc).__name__}: {exc}")
+        reporte["fuentes"]["Data912"] = {
+            "estado": "ERROR", "detalle": str(exc), "url": URL_DATA912
+        }
+
+    for ticker in tickers:
+        maestro = MAESTRO_CONTRACTUAL[ticker]
+        cf = evaluar_compararfondos(ticker, indice_cf.get(ticker), maestro)
+        d9 = evaluar_data912(ticker, indice_d9.get(ticker))
+        diferencias_precio = None
+
+        if cf.get("precio") is not None and d9.get("precio") is not None:
+            diferencias_precio = round(
+                abs(cf["precio"] - d9["precio"]), 6
+            )
+
+        instrumento = {
+            "ticker": ticker,
+            "isin_maestro": maestro.get("isin"),
+            "maestro_contractual": maestro,
+            "mercado": cf,
+            "corroboracion": d9,
+            "diferencia_absoluta_precio_vs_data912": diferencias_precio,
+        }
+        reporte["instrumentos"].append(instrumento)
+
+    if errores and not indice_cf:
+        reporte["estado_general"] = "SIN_FUENTE_PRIMARIA"
+    elif any(i["mercado"].get("estado", "").startswith("BLOQUEADO")
+             for i in reporte["instrumentos"]):
+        reporte["estado_general"] = "REQUIERE_AUDITORIA_CONTRACTUAL"
+    elif any(i["mercado"].get("precio_utilizable")
+             for i in reporte["instrumentos"]):
+        reporte["estado_general"] = "CONSULTA_COMPLETADA_CON_VALIDACIONES"
+    else:
+        reporte["estado_general"] = "CONSULTA_COMPLETADA_SIN_PRECIOS_VALIDOS"
+
+    reporte["errores"] = errores
+    return reporte
+
+
+def guardar_reporte(reporte: Dict[str, Any], ruta: str = ARCHIVO_SALIDA) -> None:
+    with open(ruta, "w", encoding="utf-8") as archivo:
+        json.dump(reporte, archivo, ensure_ascii=False, indent=2)
+
+
+def imprimir_resumen(reporte: Dict[str, Any]) -> None:
+    print("=" * 76)
+    print("FIBRX | ACTUALIZACIÓN DE OBLIGACIONES NEGOCIABLES")
+    print("Consulta UTC:", reporte["fecha_consulta_utc"])
+    print("Estado:", reporte["estado_general"])
+    print("=" * 76)
+    for item in reporte["instrumentos"]:
+        m = item["mercado"]
+        print(
+            f'{item["ticker"]:8} | {m.get("estado","N/D"):42} | '
+            f'Precio={m.get("precio")} | TIR={m.get("tir_api_pct")} | '
+            f'Ops={m.get("operaciones")}'
+        )
+        validacion = m.get("validacion_contractual", {})
+        for diferencia in validacion.get("diferencias", []):
+            print("  ALERTA:", diferencia)
+        if m.get("precioStale"):
+            print("  ALERTA: precio marcado como desactualizado por la API.")
+    print("=" * 76)
+
+
+def main() -> int:
+    try:
+        reporte = construir_reporte()
+        guardar_reporte(reporte)
+        imprimir_resumen(reporte)
+        print(f"Archivo generado: {os.path.abspath(ARCHIVO_SALIDA)}")
+        return 0
+    except Exception as exc:
+        print(f"ERROR FATAL: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
-
-    print("\nRESULTADO: diagnóstico ejecutado. Revisar las coincidencias y candidatos.")
-    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
