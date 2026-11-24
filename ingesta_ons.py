@@ -42,7 +42,7 @@ from urllib.error import URLError, HTTPError
 
 URL_COMPARARFONDOS = "https://compararfondos.com.ar/api/bonos"
 URL_DATA912 = "https://data912.com/live/arg_corp"
-VERSION_MOTOR = "2.1.0"
+VERSION_MOTOR = "2.2.0"
 TIMEOUT_SEGUNDOS = 20
 ARCHIVO_SALIDA = os.environ.get("FIBRX_ON_OUTPUT", "ons_mercado.json")
 DIRECTORIO_EVIDENCIA = os.environ.get("FIBRX_ON_EVIDENCE_DIR", "ons_evidencia")
@@ -557,8 +557,6 @@ def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
 
     if estado_especie != "ESPECIE_Y_LIQUIDACION_COINCIDENTES":
         estado_precio = estado_especie
-    elif validacion["estado"] == "CONFLICTO_CONFIRMADO":
-        estado_precio = "BLOQUEADO_CONFLICTO_CONTRACTUAL"
     elif stale is None:
         estado_precio = "ESTADO_PRECIO_DESCONOCIDO"
     elif stale:
@@ -582,25 +580,41 @@ def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
     tir_es_real = es_booleano_explicito(registro, "tirEsReal")
     pago_en = str(registro.get("pagoEn") or "").lower()
 
-    razones_tir = []
-    if not precio_utilizable:
-        razones_tir.append("Precio de especie no habilitado")
+    # Política 2.2: publicar los indicadores del proveedor como tales,
+    # con reservas visibles. Bloquear únicamente si hay flags adversos explícitos
+    # o incompatibilidad de pago/negociación. Ausencias generan advertencias,
+    # no se convierten silenciosamente en False ni en validación.
+    bloqueos_tir = []
+    advertencias_indicadores = []
     if tir is None:
-        razones_tir.append("TIR no informada por la API")
-    if duration is None or duration < 0:
-        razones_tir.append("Duration no informada o inválida")
-    if tir_stale is not False:
-        razones_tir.append("Estado de antigüedad de TIR no confirmado como vigente")
-    if tir_pocas_ops is not False:
-        razones_tir.append("La API no confirma que la TIR tenga operaciones suficientes")
-    if tir_moneda_cruzada is not False:
-        razones_tir.append("La API no descarta TIR con moneda cruzada")
+        bloqueos_tir.append("TIR no informada por la API")
+    if tir_stale is True:
+        bloqueos_tir.append("TIR marcada como desactualizada por la API")
+    elif tir_stale is None:
+        advertencias_indicadores.append("Flag tirStale no informado")
+    if tir_moneda_cruzada is True:
+        bloqueos_tir.append("TIR marcada como moneda cruzada por la API")
+    elif tir_moneda_cruzada is None:
+        advertencias_indicadores.append("Flag tirMonedaCruzada no informado")
+    if tir_pocas_ops is True:
+        advertencias_indicadores.append("API marca pocas operaciones; indicador de liquidez débil")
+    elif tir_pocas_ops is None:
+        advertencias_indicadores.append("Flag tirPocasOps no informado")
     if tir_es_real is True:
-        razones_tir.append("La API marca la TIR como real; no debe presentarse como TIR nominal")
+        advertencias_indicadores.append("TIR informada como REAL; mostrar claramente y no confundir con nominal")
+    elif tir_es_real is None:
+        advertencias_indicadores.append("Flag tirEsReal no informado; naturaleza de la tasa no confirmada")
     if pago_en == "cable" and tc_type == "MEP":
-        razones_tir.append("El bono paga en cable y cotiza en MEP")
+        bloqueos_tir.append("Instrumento paga en cable y cotiza en MEP")
+    if not precio_utilizable:
+        bloqueos_tir.append("Precio de especie no habilitado; no se publica TIR como indicador vigente")
+    if estado_especie != "ESPECIE_Y_LIQUIDACION_COINCIDENTES":
+        bloqueos_tir.append("Identidad/especie de mercado no validada")
 
-    indicadores_utilizables = not razones_tir
+    tir_publicable_proveedor = tir is not None and not bloqueos_tir
+    duration_publicable_proveedor = duration is not None and duration >= 0
+    indicadores_utilizables = tir_publicable_proveedor
+    razones_tir = bloqueos_tir + advertencias_indicadores
 
     return {
         "ticker": ticker,
@@ -663,6 +677,13 @@ def evaluar_compararfondos(ticker: str, registro: Optional[Dict[str, Any]],
         "validacion_contractual": validacion,
         "precio_utilizable": precio_utilizable,
         "indicadores_utilizables": indicadores_utilizables,
+        "tir_publicable_proveedor": tir_publicable_proveedor,
+        "duration_publicable_proveedor": duration_publicable_proveedor,
+        "estado_publicacion_tir": "PUBLICABLE_PROVEEDOR_CON_RESERVAS" if tir_publicable_proveedor else "BLOQUEADA",
+        "estado_publicacion_duration": "PUBLICABLE_PROVEEDOR_CON_RESERVAS" if duration_publicable_proveedor else "BLOQUEADA",
+        "tipo_tir": "REAL" if tir_es_real is True else "NOMINAL_NO_CONFIRMADA" if tir_es_real is None else "NOMINAL",
+        "bloqueos_indicadores": bloqueos_tir,
+        "advertencias_indicadores": advertencias_indicadores,
         "motivos_indicadores_no_utilizables": razones_tir,
         "nota": (
             "Precio e indicadores son datos del agregador. La coincidencia de "
@@ -807,6 +828,12 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
         )
         instrumento = {
             "ticker": ticker,
+            "controles_publicacion_individuales": {
+                "precio": {"publicable": cf.get("precio_utilizable") is True, "estado": cf.get("estado"), "advertencia_contractual": cf.get("validacion_contractual", {}).get("estado")},
+                "tir_proveedor": {"publicable": cf.get("tir_publicable_proveedor") is True, "estado": cf.get("estado_publicacion_tir"), "tipo": cf.get("tipo_tir"), "advertencias": cf.get("advertencias_indicadores", []), "bloqueos": cf.get("bloqueos_indicadores", [])},
+                "duration_proveedor": {"publicable": cf.get("duration_publicable_proveedor") is True, "estado": cf.get("estado_publicacion_duration")},
+                "validacion_contractual": {"estado": cf.get("validacion_contractual", {}).get("estado"), "documentalmente_validada": False},
+            },
             "isin_maestro": maestro.get("isin"),
             "maestro_contractual": maestro,
             "mercado": cf,
@@ -829,12 +856,14 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
         reporte["estado_general"] = "SIN_FUENTE_PRIMARIA"
     elif not tickers_encontrados:
         reporte["estado_general"] = "SIN_COINCIDENCIAS_EXACTAS_EN_FUENTE_PRIMARIA"
-    elif any(i["mercado"].get("estado") == "BLOQUEADO_CONFLICTO_CONTRACTUAL"
-             for i in reporte["instrumentos"]):
-        reporte["estado_general"] = "REQUIERE_AUDITORIA_CONTRACTUAL"
     elif any(i["mercado"].get("precio_utilizable")
              for i in reporte["instrumentos"]):
-        reporte["estado_general"] = "CONSULTA_COMPLETADA_CON_PRECIOS_DE_MERCADO"
+        precios_ok = sum(1 for i in reporte["instrumentos"] if i["mercado"].get("precio_utilizable"))
+        total = len(reporte["instrumentos"])
+        reporte["estado_general"] = (
+            "CONSULTA_COMPLETADA_PUBLICACION_PARCIAL" if precios_ok < total
+            else "CONSULTA_COMPLETADA_CON_PRECIOS_DE_MERCADO"
+        )
     else:
         reporte["estado_general"] = "CONSULTA_COMPLETADA_SIN_PRECIOS_VALIDOS"
 
@@ -842,14 +871,20 @@ def construir_reporte(tickers: Optional[List[str]] = None) -> Dict[str, Any]:
     reporte["paquete_evidencia"] = crear_paquete_evidencia(
         metadata_capturas, errores, directorio_evidencia_run, ARCHIVO_PAQUETE_EVIDENCIA
     )
+    precios_publicables = [i for i in reporte["instrumentos"] if i["mercado"].get("precio_utilizable") is True]
+    tir_publicables = [i for i in reporte["instrumentos"] if i["mercado"].get("tir_publicable_proveedor") is True]
+    duration_publicables = [i for i in reporte["instrumentos"] if i["mercado"].get("duration_publicable_proveedor") is True]
     reporte["control_publicacion"] = {
-        "publicar_tir_y_duration": False,
-        "motivo": "Este motor aún no recalcula independientemente la TIR ni certifica los flujos contra documentación contractual oficial.",
-        "publicar_precio": all(
-            i["mercado"].get("precio_utilizable") is True
-            for i in reporte["instrumentos"]
-        ) and bool(reporte["instrumentos"]),
-        "nota": "precio_utilizable indica disponibilidad de mercado con reservas; no equivale a recomendación ni certificación contractual.",
+        "politica": "PUBLICACION_INDEPENDIENTE_POR_INSTRUMENTO_Y_CAMPO",
+        "publicar_precio": bool(precios_publicables),
+        "estado_publicacion_precio": "PUBLICACION_PARCIAL" if precios_publicables and len(precios_publicables) < len(reporte["instrumentos"]) else "PUBLICABLE" if precios_publicables else "SIN_PRECIOS_PUBLICABLES",
+        "tickers_precio_publicable": [i["ticker"] for i in precios_publicables],
+        "tickers_precio_bloqueado": [i["ticker"] for i in reporte["instrumentos"] if not i["mercado"].get("precio_utilizable")],
+        "publicar_tir_y_duration": bool(tir_publicables or duration_publicables),
+        "estado_publicacion_indicadores": "PUBLICACION_PARCIAL_CON_RESERVAS" if (tir_publicables or duration_publicables) else "SIN_INDICADORES_PUBLICABLES",
+        "tickers_tir_publicable_proveedor": [i["ticker"] for i in tir_publicables],
+        "tickers_duration_publicable_proveedor": [i["ticker"] for i in duration_publicables],
+        "nota": "TIR y duration se publican identificadas como datos de CompararFondos, con fecha y advertencias. No son cálculos independientes de FIBRX ni certificación contractual. Precio se evalúa individualmente; conflictos contractuales no bloquean por sí solos la cotización de mercado.",
         "niveles_evidencia": {
             "nivel_1": "Dato recibido, con origen, fecha de captura y hash del snapshot.",
             "nivel_2": "Dato contrastado con fuente verdaderamente independiente.",
