@@ -451,7 +451,7 @@ def es_booleano_explicito(registro: Dict[str, Any], campo: str) -> Optional[bool
 
 
 def normalizar_emisor(valor: Any) -> List[str]:
-    """Normaliza un emisor para comparar denominaciones sin coincidencias débiles."""
+    """Normaliza emisores y elimina sufijos societarios al final."""
     if not valor:
         return []
 
@@ -460,12 +460,33 @@ def normalizar_emisor(valor: Any) -> List[str]:
     texto = texto.upper()
     texto = re.sub(r"[^A-Z0-9]+", " ", texto)
 
-    sufijos_societarios = {
-        "SA", "SAC", "SCA", "SAS", "SRL", "SOCIEDAD",
-        "ANONIMA", "COMERCIAL",
-    }
-    return [token for token in texto.split() if token not in sufijos_societarios]
+    tokens = texto.split()
 
+    sufijos = (
+        ("SOCIEDAD", "ANONIMA"),
+        ("SOCIEDAD", "COMERCIAL"),
+        ("S", "A", "C"),
+        ("S", "C", "A"),
+        ("S", "A", "S"),
+        ("S", "R", "L"),
+        ("S", "A"),
+        ("SA",),
+        ("SAC",),
+        ("SCA",),
+        ("SAS",),
+        ("SRL",),
+    )
+
+    cambio = True
+    while cambio and tokens:
+        cambio = False
+        for sufijo in sufijos:
+            if len(tokens) >= len(sufijo) and tuple(tokens[-len(sufijo):]) == sufijo:
+                tokens = tokens[:-len(sufijo)]
+                cambio = True
+                break
+
+    return tokens
 
 def comparar_contrato(ticker: str, api: Dict[str, Any],
                       maestro: Dict[str, Any]) -> Dict[str, Any]:
