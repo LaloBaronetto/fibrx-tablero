@@ -5,7 +5,8 @@
 Publica exclusivamente tasas_mercado.json (schema_version 6).
 No genera auditoria_fci.json, no usa tasas fallback y no cambia clases.
 Si falta una clase, su identidad no coincide o la TNA no tiene unidad validable,
-la ejecución falla antes de reemplazar el JSON publicado.
+la ejecución falla antes de reemplazar el JSON publicado. Se admiten TNA negativas
+cuando la fuente las entrega explícitamente en porcentaje convencional.
 """
 from __future__ import annotations
 import json
@@ -20,6 +21,8 @@ from pathlib import Path
 API = "https://api.argentinadatos.com/v1"
 FUNDS_URL = f"{API}/finanzas/fci/fondos"
 MONEY_MARKET_URL = f"{API}/finanzas/fci/mercadoDinero/ultimo"
+# API pública adicional para renta fija argentina (BYMA; rezago aproximado 5 min).
+BONDS_URL = "https://compararfondos.com.ar/api/bonos"
 OUTPUT = Path("tasas_mercado.json")
 TIMEOUT = 45
 
@@ -30,6 +33,22 @@ TARGETS = [
     {"id":"IOL_CASH_MGMT_B", "name":"IOL Cash Management - Clase B", "fondo_id":"1301", "clase_id":"3698", "cnv":"1246", "manager":"adcap", "cafci":{"fondo_id":"1301","clase_id":"3698"}},
     {"id":"UALINTEC_AHORRO_A", "name":"Ualintec Ahorro Pesos - Clase A", "fondo_id":"1307", "clase_id":"3713", "cnv":"1202", "manager":"uala", "cafci":{"fondo_id":"1307","clase_id":"3713"}},
     {"id":"UALINTEC_PESOS_PLUS_A", "name":"Ualintec Pesos Plus - Clase A", "fondo_id":"1564", "clase_id":"5021", "cnv":"1565", "manager":"uala", "cafci":{"fondo_id":"1564","clase_id":"5021"}},
+]
+
+
+# ON incorporadas como universo de comparación, sin datos de cartera personal.
+# Los campos contractuales no confirmados se dejan en null; no se infieren cupones
+# ni porcentajes de amortización a partir de importes de tenencias individuales.
+ON_TARGETS = [
+    {"ticker":"CP36D", "emisor":"Compañía General de Combustibles S.A.", "nombre":"CGC Clase 36", "isin":"AR0015464982", "moneda_objetivo":"USD MEP", "ley":"Argentina", "vencimiento":"2027-10-10", "tasa_cupon_anual":6.50, "tipo_tasa":"Fija", "estructura":"Bullet", "frecuencia":"Semestral", "fuente_contractual":"Datos de Balanz informados por el usuario; corte 2026-11-20"},
+    {"ticker":"YM34D", "emisor":"YPF S.A.", "nombre":"YPF Clase XXXIV", "isin":"USP989MJBY67", "moneda_objetivo":"USD MEP", "ley":"Nueva York", "vencimiento":"2034-01-17", "tasa_cupon_anual":8.25, "tipo_tasa":"Fija", "estructura":"Amortizable", "frecuencia":"Semestral", "fuente_contractual":"Datos de Balanz informados por el usuario; corte 2026-11-20"},
+    {"ticker":"VSCVD", "emisor":"Vista Energy Argentina S.A.U.", "nombre":"Vista Energy Clase XXIX", "isin":"USP9659RAB44", "moneda_objetivo":"USD MEP", "ley":"Nueva York", "vencimiento":"2033-06-10", "tasa_cupon_anual":8.50, "tipo_tasa":"Fija", "estructura":"Amortizable", "frecuencia":"Semestral", "fuente_contractual":"Datos de Balanz informados por el usuario; corte 2026-11-20"},
+    {"ticker":"AEC3D", "ticker_especie_original":"AEC3O", "emisor":"AES Argentina Generación S.A.", "nombre":"AES Argentina Generación Clase 3", "isin":"AR0382592001", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2028-08-06", "tasa_cupon_anual":None, "tipo_tasa":None, "estructura":None, "frecuencia":"Semestral (fechas observadas; contrato a validar)", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"IRCPD", "ticker_especie_original":"IRCPO", "emisor":"IRSA Inversiones y Representaciones S.A.", "nombre":"IRSA 8% 2035", "isin":None, "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2035-03-31", "tasa_cupon_anual":8.00, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"MGCRD", "ticker_especie_original":"MGCRO", "emisor":"Pampa Energía S.A.", "nombre":"Pampa Energía 7,75% 2037", "isin":"USP7464EAY25", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2037-11-14", "tasa_cupon_anual":7.75, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Bullet (pendiente de prospecto)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"PQCSD", "ticker_especie_original":"PQCSO", "emisor":"Petroquímica Comodoro Rivadavia S.A.", "nombre":"PCR Clase S 2031", "isin":"AR0309447628", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2031-02-17", "tasa_cupon_anual":None, "tipo_tasa":None, "estructura":"Bullet (pendiente de prospecto)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"TLCPD", "ticker_especie_original":"TLCPO", "emisor":"Telecom Argentina S.A.", "nombre":"Telecom Argentina 9,25% 2033", "isin":"USP9028NCA74", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2033-05-28", "tasa_cupon_anual":9.25, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
+    {"ticker":"VSCXD", "ticker_especie_original":"VSCXO", "emisor":"Vista Energy Argentina S.A.U.", "nombre":"Vista Energy 7,875% 2038", "isin":"USP9659RAD00", "moneda_objetivo":"USD MEP", "ley":None, "vencimiento":"2038-04-08", "tasa_cupon_anual":7.875, "tipo_tasa":"Fija (según descripción aportada)", "estructura":"Amortizable (por validar porcentajes)", "frecuencia":"Semestral", "fuente_contractual":"Descripción y fechas de pagos aportadas; sin importes personales"},
 ]
 
 
@@ -48,11 +67,11 @@ def fetch_json(url: str):
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read(500).decode("utf-8", errors="replace")
-        raise RuntimeError(f"ArgentinaDatos HTTP {exc.code}: {body}") from exc
+        raise RuntimeError(f"HTTP {exc.code} en {url}: {body}") from exc
     except (urllib.error.URLError, TimeoutError) as exc:
-        raise RuntimeError(f"No se pudo consultar ArgentinaDatos: {exc}") from exc
+        raise RuntimeError(f"No se pudo consultar {url}: {exc}") from exc
     except json.JSONDecodeError as exc:
-        raise RuntimeError("ArgentinaDatos devolvió JSON inválido") from exc
+        raise RuntimeError(f"La fuente {url} devolvió JSON inválido") from exc
 
 
 def as_list(payload):
@@ -71,14 +90,19 @@ def currency_is_ars(value):
 
 
 def normalize_tna(raw):
-    """La API observada entrega TNA en porcentaje convencional (p.ej. 18.1509).
-    Se convierte a fracción (0.181509). No se adivinan valores <=1.
+    """Convierte la TNA de porcentaje convencional a fracción.
+
+    La API de ArgentinaDatos informa el campo tnaEstimada en porcentaje:
+    18.1509 -> 0.181509 y -17.6921 -> -0.176921.
+    Se admiten valores negativos porque una TNA estimada puede ser negativa.
+    Se rechazan cero y valores entre -1 y 1 porque su unidad sería ambigua
+    frente a una posible fracción ya normalizada.
     """
     try:
         x = float(raw)
     except (TypeError, ValueError):
         return None
-    if 1 < x <= 500:
+    if 1 < x <= 500 or -500 <= x < -1:
         return x / 100.0
     return None
 
@@ -144,6 +168,7 @@ def build_record(fund, cfg, contrast):
         "nombre": fund.get("nombre") or cfg["name"],
         "nombre_api": fund.get("nombre"),
         "tna": tna,
+        "estado_tasa": "NEGATIVA_OBSERVADA" if tna < 0 else "POSITIVA",
         "tipo_indicador": "TNA_ESTIMADA",
         "unidad_original": "porcentaje_convencional",
         "risky": False,
@@ -176,6 +201,67 @@ def build_record(fund, cfg, contrast):
     }
 
 
+
+def bond_records(payload):
+    """Normaliza el contenedor documentado por CompararFondos sin inventar campos."""
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        for key in ("bonds", "bonos", "data", "items"):
+            if isinstance(payload.get(key), list):
+                return payload[key]
+    return []
+
+
+def build_on_records(payload, fetch_error=None):
+    bonds = bond_records(payload) if payload is not None else []
+    by_ticker = {}
+    for item in bonds:
+        if isinstance(item, dict) and item.get("ticker"):
+            by_ticker.setdefault(str(item["ticker"]).upper(), []).append(item)
+
+    rueda = payload.get("rueda") if isinstance(payload, dict) else None
+    fecha_rueda = rueda.get("fechaRueda") if isinstance(rueda, dict) else None
+    rows, diagnostics = [], {}
+    for cfg in ON_TARGETS:
+        matches = by_ticker.get(cfg["ticker"].upper(), [])
+        quote = matches[0] if len(matches) == 1 else None
+        if len(matches) > 1:
+            status = "TICKER_DUPLICADO_EN_FUENTE"
+        elif quote is None:
+            status = "SIN_COTIZACION_EN_FUENTE" if not fetch_error else "FUENTE_NO_DISPONIBLE"
+        elif quote.get("tcType") not in (None, "MEP"):
+            status = "ESPECIE_NO_MEP"
+        elif quote.get("tcType") is None:
+            status = "MONEDA_NO_CONFIRMADA_POR_FUENTE"
+        elif quote.get("precioStale") is True:
+            status = "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA"
+        else:
+            status = "COTIZACION_RECIBIDA"
+
+        # El proveedor publica precio/TIR/duración calculados desde su rueda.
+        # Se conserva null cuando la fuente no puede calcular una métrica.
+        market = {}
+        if quote:
+            for key in ("precio", "precioARS", "tir", "tirEsReal", "paridad", "paridadBase",
+                        "valorTecnico", "capitalResidual", "duration", "vencimiento",
+                        "moneda", "tcType", "pagoEn", "operaciones", "precioStale",
+                        "tirPocasOps", "tirMonedaCruzada", "flujos"):
+                if key in quote:
+                    market[key] = quote.get(key)
+        row = {**cfg, **market,
+               "estado_dato_mercado":status,
+               "fecha_rueda":fecha_rueda,
+               "fuente_mercado":"CompararFondos API — precios BYMA y métricas de renta fija",
+               "url_fuente":"https://compararfondos.com.ar/api/bonos",
+               "fecha_cotizacion":fecha_rueda,
+               "nivel_validacion":"TICKER_EXACTO" if quote else "IDENTIDAD_CONFIGURADA_SIN_COTIZACION",
+               "advertencia":"Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."}
+        rows.append(row)
+        diagnostics[cfg["ticker"]] = {"estado":status, "coincidencias":len(matches), "fecha_rueda":fecha_rueda}
+    return rows, diagnostics, len(bonds)
+
+
 def atomic_write(path, payload):
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -197,6 +283,18 @@ def main():
     except Exception as exc:  # Contraste auxiliar: no reemplaza ni invalida la fuente principal.
         market_error = str(exc)
         print(f"[AVISO] No se pudo obtener contraste de mercado dinero: {market_error}")
+
+    # La fuente de ON es independiente: su caída no invalida ni bloquea los seis FCI.
+    bonds_payload, bonds_error = None, None
+    try:
+        print("[FIBRX] Consultando cotizaciones y flujos de ON...")
+        bonds_payload = fetch_json(BONDS_URL)
+    except Exception as exc:
+        bonds_error = str(exc)
+        print(f"[AVISO] No se pudo obtener mercado de ON: {bonds_error}")
+    on_rows, on_diagnostics, bonds_count = build_on_records(bonds_payload, bonds_error)
+    for item in on_rows:
+        print(f"[ON] {item['ticker']}: {item['estado_dato_mercado']}")
 
     rows, diagnostics = [], {}
     for cfg in TARGETS:
@@ -232,10 +330,20 @@ def main():
             {"nombre":"ArgentinaDatos", "endpoint":"/v1/finanzas/fci/mercadoDinero/ultimo", "base":API,
              "origen_de_datos":"CNV - Cuotapartes", "rol":"Contraste exacto de nombre, fecha y VCP para Balanz Money Market A/L."},
         ],
-        "advertencia":"Datos observados desde una única fuente pública (ArgentinaDatos/CNV). La TNA estimada corresponde al período informado; no es contractual ni garantiza rendimientos futuros. Las referencias CAFCI se mantienen separadas de los IDs API.",
+        "advertencia":"FCI: datos observados desde ArgentinaDatos/CNV; TNA estimada, no contractual. ON: cotizaciones y métricas de CompararFondos/BYMA, sujetas a disponibilidad, volumen y rezago; TIR nula significa que la fuente no la pudo calcular. Los datos personales de cartera no se incorporan. No se infieren cupones ni amortizaciones faltantes.",
         "cantidad_fondos_fuente": len(funds),
         "cantidad_registros_mercado_dinero": len(market_records),
         "error_consulta_mercado_dinero": market_error,
+        "fuente_obligaciones_negociables": {
+            "nombre":"CompararFondos", "endpoint":"/api/bonos",
+            "url":BONDS_URL, "origen_de_datos":"BYMA (precios con rezago aproximado de 5 minutos) y flujos cargados/verificados por el proveedor",
+            "criterio_moneda":"Solo especies D con tcType=MEP; se excluyen especies O/ARS y C/CCL.",
+            "atribucion":"Al publicar estos datos debe mencionarse compararfondos.com.ar.",
+            "error_consulta":bonds_error, "cantidad_instrumentos_recibidos":bonds_count,
+            "fecha_rueda":(bonds_payload.get("rueda", {}).get("fechaRueda") if isinstance(bonds_payload, dict) and isinstance(bonds_payload.get("rueda"), dict) else None)
+        },
+        "obligaciones_negociables": on_rows,
+        "diagnostico_obligaciones_negociables": on_diagnostics,
         "vehiculos": rows,
         "diagnostico_vehiculos": diagnostics,
         "vehiculos_omitidos_o_no_cubiertos": [],
@@ -243,10 +351,15 @@ def main():
     # Final structural checks before atomic replacement.
     required = {x["id"] for x in TARGETS}
     actual = {x.get("id") for x in data["vehiculos"]}
-    if actual != required or any(not (0 < float(x["tna"]) <= 5) for x in rows):
+    # Una TNA negativa es válida si viene del campo tnaEstimada y su unidad
+    # porcentual fue reconocida por normalize_tna(). Se conserva su signo.
+    if actual != required or any(
+        float(x["tna"]) == 0 or not (-5 <= float(x["tna"]) <= 5)
+        for x in rows
+    ):
         raise RuntimeError("Validación final del esquema 6 fallida; se conserva el JSON anterior.")
     atomic_write(OUTPUT, data)
-    print(f"[OK] Publicado {OUTPUT}: schema 6, {len(rows)}/6 clases. No se genera auditoria_fci.json.")
+    print(f"[OK] Publicado {OUTPUT}: schema 6, {len(rows)}/6 clases FCI y {len(on_rows)} ON configuradas ({sum(1 for x in on_rows if x['estado_dato_mercado']=='COTIZACION_RECIBIDA')} con cotización recibida). No se genera auditoria_fci.json.")
 
 
 if __name__ == "__main__":

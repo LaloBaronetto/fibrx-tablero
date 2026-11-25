@@ -1,0 +1,116 @@
+
+name: Actualización de ON FIBRX
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fibrx-diagnostico-ons
+  cancel-in-progress: false
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validar sintaxis del motor ON
+        run: python -m py_compile ingesta_ons.py
+
+      - name: Ejecutar consulta real de fuentes ON
+        id: ingesta
+        continue-on-error: true
+        env:
+          FIBRX_ON_OUTPUT: ons_mercado.json
+        run: |
+          set +e
+          python ingesta_ons.py
+          rc=$?
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          echo "Código de salida del motor: $rc"
+          exit 0
+
+      - name: Validar y resumir JSON generado
+        id: validar
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("ons_mercado.json")
+
+          if not p.is_file() or p.stat().st_size == 0:
+              print("No se generó ons_mercado.json")
+              raise SystemExit(1)
+
+          data = json.loads(p.read_text(encoding="utf-8"))
+
+          print("JSON válido")
+          print("Estado general:", data.get("estado_general"))
+          print("Fecha UTC:", data.get("fecha_consulta_utc"))
+
+          for item in data.get("instrumentos", []):
+              mercado = item.get("mercado", {})
+              print(
+                  item.get("ticker"),
+                  "| estado:", mercado.get("estado"),
+                  "| precio:", mercado.get("precio"),
+                  "| TIR API:", mercado.get("tir_api_pct"),
+                  "| operaciones:", mercado.get("operaciones"),
+                  "| precio utilizable:", mercado.get("precio_utilizable"),
+                  "| indicadores utilizables:", mercado.get("indicadores_utilizables"),
+              )
+          PY
+
+      - name: Publicar JSON de ON en el repositorio
+        if: steps.ingesta.outputs.exit_code == '0' && steps.validar.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add ons_mercado.json
+
+          if git diff --cached --quiet; then
+            echo "El JSON no presenta cambios. No se necesita un nuevo commit."
+          else
+            git commit -m "Actualizar datos de mercado ON"
+            git pull --rebase origin main
+            git push origin HEAD:main
+            echo "JSON de ON publicado correctamente en main."
+          fi
+
+      - name: Guardar JSON como artefacto de diagnóstico
+        if: always() && hashFiles('ons_mercado.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-ons-fibrx
+          path: ons_mercado.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Informar resultado de la ingesta
+        if: always()
+        run: |
+          code='${{ steps.ingesta.outputs.exit_code }}'
+
+          if [ "$code" != "0" ]; then
+            echo "El motor terminó con código $code. Revisar los logs."
+            exit 1
+          fi
+
+          echo "El motor terminó correctamente."
+          echo "Verificar ons_mercado.json en el repositorio."

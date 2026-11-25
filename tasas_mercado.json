@@ -1,0 +1,1222 @@
+{
+  "schema_version": 6,
+  "actualizado_el": "2026-11-24T14:19:23.045397+00:00",
+  "fecha_datos_fuente": "2026-11-20T23:52:16.000Z",
+  "estado_global": "DATOS_ARGENTINADATOS_UNA_FUENTE",
+  "fuentes": [
+    {
+      "nombre": "ArgentinaDatos",
+      "endpoint": "/v1/finanzas/fci/fondos",
+      "base": "https://api.argentinadatos.com/v1",
+      "origen_de_datos": "CNV - Cuotapartes",
+      "rol": "Identificación de clases, cuotaparte y rendimientos publicados por la API."
+    },
+    {
+      "nombre": "ArgentinaDatos",
+      "endpoint": "/v1/finanzas/fci/mercadoDinero/ultimo",
+      "base": "https://api.argentinadatos.com/v1",
+      "origen_de_datos": "CNV - Cuotapartes",
+      "rol": "Contraste exacto de nombre, fecha y VCP para Balanz Money Market A/L."
+    }
+  ],
+  "advertencia": "FCI: datos observados desde ArgentinaDatos/CNV; TNA estimada, no contractual. ON: cotizaciones y métricas de CompararFondos/BYMA, sujetas a disponibilidad, volumen y rezago; TIR nula significa que la fuente no la pudo calcular. Los datos personales de cartera no se incorporan. No se infieren cupones ni amortizaciones faltantes.",
+  "cantidad_fondos_fuente": 4839,
+  "cantidad_registros_mercado_dinero": 625,
+  "error_consulta_mercado_dinero": null,
+  "fuente_obligaciones_negociables": {
+    "nombre": "CompararFondos",
+    "endpoint": "/api/bonos",
+    "url": "https://compararfondos.com.ar/api/bonos",
+    "origen_de_datos": "BYMA (precios con rezago aproximado de 5 minutos) y flujos cargados/verificados por el proveedor",
+    "criterio_moneda": "Solo especies D con tcType=MEP; se excluyen especies O/ARS y C/CCL.",
+    "atribucion": "Al publicar estos datos debe mencionarse compararfondos.com.ar.",
+    "error_consulta": null,
+    "cantidad_instrumentos_recibidos": 441,
+    "fecha_rueda": "2026-11-24"
+  },
+  "obligaciones_negociables": [
+    {
+      "ticker": "CP36D",
+      "emisor": "Compañía General de Combustibles S.A.",
+      "nombre": "CGC Clase 36",
+      "isin": "AR0015464982",
+      "moneda_objetivo": "USD MEP",
+      "ley": "Argentina",
+      "vencimiento": "2027-10-11",
+      "tasa_cupon_anual": 6.5,
+      "tipo_tasa": "Fija",
+      "estructura": "Bullet",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Datos de Balanz informados por el usuario; corte 2026-11-20",
+      "precio": 100.4,
+      "tir": 7.11,
+      "paridad": 99.61,
+      "paridadBase": "valor tecnico",
+      "duration": 0.86,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 2,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-04-12",
+          "monto": 3.2399999999999998
+        },
+        {
+          "fecha": "2027-10-11",
+          "monto": 103.28
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "YM34D",
+      "emisor": "YPF S.A.",
+      "nombre": "YPF Clase XXXIV",
+      "isin": "USP989MJBY67",
+      "moneda_objetivo": "USD MEP",
+      "ley": "Nueva York",
+      "vencimiento": "2034-01-17",
+      "tasa_cupon_anual": 8.25,
+      "tipo_tasa": "Fija",
+      "estructura": "Amortizable",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Datos de Balanz informados por el usuario; corte 2026-11-20",
+      "precio": 102.85,
+      "tir": 8.43,
+      "paridad": 99.95,
+      "paridadBase": "valor tecnico",
+      "duration": 4.85,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 178,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-01-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2027-07-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2028-01-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2028-07-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2029-01-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2029-07-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2030-01-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2030-07-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2031-01-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2031-07-17",
+          "monto": 4.125
+        },
+        {
+          "fecha": "2032-01-17",
+          "monto": 34.125
+        },
+        {
+          "fecha": "2032-07-17",
+          "monto": 2.8875
+        },
+        {
+          "fecha": "2033-01-17",
+          "monto": 32.887499999999996
+        },
+        {
+          "fecha": "2033-07-17",
+          "monto": 1.6500000000000001
+        },
+        {
+          "fecha": "2034-01-17",
+          "monto": 41.65
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "VSCVD",
+      "emisor": "Vista Energy Argentina S.A.U.",
+      "nombre": "Vista Energy Clase XXIX",
+      "isin": "USP9659RAB44",
+      "moneda_objetivo": "USD MEP",
+      "ley": "Nueva York",
+      "vencimiento": "2033-06-10",
+      "tasa_cupon_anual": 8.5,
+      "tipo_tasa": "Fija",
+      "estructura": "Amortizable",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Datos de Balanz informados por el usuario; corte 2026-11-20",
+      "precio": 107.45,
+      "tir": 7.84,
+      "paridad": 103.43,
+      "paridadBase": "valor tecnico",
+      "duration": 4.38,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 8,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2026-12-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2027-06-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2027-12-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2028-06-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2028-12-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2029-06-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2029-12-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2030-06-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2030-12-10",
+          "monto": 4.25
+        },
+        {
+          "fecha": "2031-06-10",
+          "monto": 37.25
+        },
+        {
+          "fecha": "2031-12-10",
+          "monto": 2.85
+        },
+        {
+          "fecha": "2032-06-10",
+          "monto": 35.85
+        },
+        {
+          "fecha": "2032-12-10",
+          "monto": 1.44
+        },
+        {
+          "fecha": "2033-06-10",
+          "monto": 35.449999999999996
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "AEC3D",
+      "ticker_especie_original": "AEC3O",
+      "emisor": "AES Argentina Generación S.A.",
+      "nombre": "AES Argentina Generación Clase 3",
+      "isin": "AR0382592001",
+      "moneda_objetivo": "USD MEP",
+      "ley": null,
+      "vencimiento": "2028-08-06",
+      "tasa_cupon_anual": null,
+      "tipo_tasa": null,
+      "estructura": null,
+      "frecuencia": "Semestral (fechas observadas; contrato a validar)",
+      "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
+      "precio": 98.81,
+      "tir": 8.68,
+      "paridad": 96.9,
+      "paridadBase": "valor tecnico",
+      "duration": 1.6,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": null,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-02-06",
+          "monto": 3.26
+        },
+        {
+          "fecha": "2027-08-06",
+          "monto": 3.2099999999999995
+        },
+        {
+          "fecha": "2028-02-06",
+          "monto": 3.26
+        },
+        {
+          "fecha": "2028-08-06",
+          "monto": 103.23
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "IRCPD",
+      "ticker_especie_original": "IRCPO",
+      "emisor": "IRSA Inversiones y Representaciones S.A.",
+      "nombre": "IRSA 8% 2035",
+      "isin": null,
+      "moneda_objetivo": "USD MEP",
+      "ley": null,
+      "vencimiento": "2035-03-31",
+      "tasa_cupon_anual": 8.0,
+      "tipo_tasa": "Fija (según descripción aportada)",
+      "estructura": "Amortizable (por validar porcentajes)",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
+      "precio": 100.75,
+      "tir": 8.24,
+      "paridad": 99.55,
+      "paridadBase": "valor tecnico",
+      "duration": 5.62,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 103,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2027-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2028-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2028-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2029-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2029-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2030-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2030-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2031-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2031-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2032-03-31",
+          "monto": 4
+        },
+        {
+          "fecha": "2032-09-30",
+          "monto": 4
+        },
+        {
+          "fecha": "2033-03-31",
+          "monto": 37
+        },
+        {
+          "fecha": "2033-09-30",
+          "monto": 2.68
+        },
+        {
+          "fecha": "2034-03-31",
+          "monto": 35.68
+        },
+        {
+          "fecha": "2034-09-30",
+          "monto": 1.3599999999999999
+        },
+        {
+          "fecha": "2035-03-31",
+          "monto": 35.36
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "MGCRD",
+      "ticker_especie_original": "MGCRO",
+      "emisor": "Pampa Energía S.A.",
+      "nombre": "Pampa Energía 7,75% 2037",
+      "isin": "USP7464EAY25",
+      "moneda_objetivo": "USD MEP",
+      "ley": null,
+      "vencimiento": "2037-11-16",
+      "tasa_cupon_anual": 7.75,
+      "tipo_tasa": "Fija (según descripción aportada)",
+      "estructura": "Bullet (pendiente de prospecto)",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
+      "precio": 95,
+      "tir": null,
+      "paridad": 94.75,
+      "paridadBase": "valor tecnico",
+      "duration": null,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 0,
+      "precioStale": true,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2027-11-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2028-05-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2028-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2029-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2029-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2030-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2030-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2031-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2031-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2032-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2032-11-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2033-05-16",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2033-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2034-05-15",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2034-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2035-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2035-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2036-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2036-11-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2037-05-14",
+          "monto": 3.875
+        },
+        {
+          "fecha": "2037-11-16",
+          "monto": 103.875
+        }
+      ],
+      "estado_dato_mercado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "PQCSD",
+      "ticker_especie_original": "PQCSO",
+      "emisor": "Petroquímica Comodoro Rivadavia S.A.",
+      "nombre": "PCR Clase S 2031",
+      "isin": "AR0309447628",
+      "moneda_objetivo": "USD MEP",
+      "ley": null,
+      "vencimiento": "2031-02-17",
+      "tasa_cupon_anual": null,
+      "tipo_tasa": null,
+      "estructura": "Bullet (pendiente de prospecto)",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
+      "precio": 94.98,
+      "tir": 10.38,
+      "paridad": 92.95,
+      "paridadBase": "valor tecnico",
+      "duration": 3.57,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 18,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2027-08-17",
+          "monto": 3.9699999999999998
+        },
+        {
+          "fecha": "2028-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2028-08-17",
+          "monto": 3.9899999999999998
+        },
+        {
+          "fecha": "2029-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2029-08-17",
+          "monto": 3.9699999999999998
+        },
+        {
+          "fecha": "2030-02-17",
+          "monto": 4.03
+        },
+        {
+          "fecha": "2030-08-17",
+          "monto": 3.9699999999999998
+        },
+        {
+          "fecha": "2031-02-17",
+          "monto": 104.03
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "TLCPD",
+      "ticker_especie_original": "TLCPO",
+      "emisor": "Telecom Argentina S.A.",
+      "nombre": "Telecom Argentina 9,25% 2033",
+      "isin": "USP9028NCA74",
+      "moneda_objetivo": "USD MEP",
+      "ley": null,
+      "vencimiento": "2033-05-28",
+      "tasa_cupon_anual": 9.25,
+      "tipo_tasa": "Fija (según descripción aportada)",
+      "estructura": "Amortizable (por validar porcentajes)",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
+      "precio": 104,
+      "tir": 9.59,
+      "paridad": 99.48,
+      "paridadBase": "valor tecnico",
+      "duration": 4.52,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 37,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2026-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2027-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2027-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2028-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2028-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2029-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2029-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2030-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2030-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2031-05-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2031-11-28",
+          "monto": 4.625
+        },
+        {
+          "fecha": "2032-05-28",
+          "monto": 54.625
+        },
+        {
+          "fecha": "2032-11-28",
+          "monto": 2.3125
+        },
+        {
+          "fecha": "2033-05-28",
+          "monto": 52.31249999999999
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    },
+    {
+      "ticker": "VSCXD",
+      "ticker_especie_original": "VSCXO",
+      "emisor": "Vista Energy Argentina S.A.U.",
+      "nombre": "Vista Energy 7,875% 2038",
+      "isin": "USP9659RAD00",
+      "moneda_objetivo": "USD MEP",
+      "ley": null,
+      "vencimiento": "2038-04-08",
+      "tasa_cupon_anual": 7.875,
+      "tipo_tasa": "Fija (según descripción aportada)",
+      "estructura": "Amortizable (por validar porcentajes)",
+      "frecuencia": "Semestral",
+      "fuente_contractual": "Descripción y fechas de pagos aportadas; sin importes personales",
+      "precio": 96.29,
+      "tir": 8.75,
+      "paridad": 95.34,
+      "paridadBase": "valor tecnico",
+      "duration": 7.11,
+      "moneda": "USD",
+      "tcType": "MEP",
+      "operaciones": 20,
+      "precioStale": false,
+      "tirPocasOps": false,
+      "flujos": [
+        {
+          "fecha": "2027-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2027-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2028-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2028-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2029-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2029-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2030-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2030-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2031-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2031-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2032-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2032-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2033-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2033-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2034-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2034-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2035-04-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2035-10-08",
+          "monto": 3.9375
+        },
+        {
+          "fecha": "2036-04-08",
+          "monto": 36.9375
+        },
+        {
+          "fecha": "2036-10-08",
+          "monto": 2.6381
+        },
+        {
+          "fecha": "2037-04-08",
+          "monto": 35.6381
+        },
+        {
+          "fecha": "2037-10-08",
+          "monto": 1.3388
+        },
+        {
+          "fecha": "2038-04-08",
+          "monto": 35.3387
+        }
+      ],
+      "estado_dato_mercado": "COTIZACION_RECIBIDA",
+      "fecha_rueda": "2026-11-24",
+      "fuente_mercado": "CompararFondos API — precios BYMA y métricas de renta fija",
+      "url_fuente": "https://compararfondos.com.ar/api/bonos",
+      "fecha_cotizacion": "2026-11-24",
+      "nivel_validacion": "TICKER_EXACTO",
+      "advertencia": "Universo comparativo expresado en USD MEP. Solo se acepta la especie D identificada por tcType=MEP; no se mezclan precios ARS (O) ni CCL (C). Si la fuente no informa tcType, la moneda queda sin confirmar. Flujos solo se publican si la API los devuelve."
+    }
+  ],
+  "diagnostico_obligaciones_negociables": {
+    "CP36D": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "YM34D": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "VSCVD": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "AEC3D": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "IRCPD": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "MGCRD": {
+      "estado": "PRECIO_SIN_OPERACIONES_EN_ULTIMA_RUEDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "PQCSD": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "TLCPD": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    },
+    "VSCXD": {
+      "estado": "COTIZACION_RECIBIDA",
+      "coincidencias": 1,
+      "fecha_rueda": "2026-11-24"
+    }
+  },
+  "vehiculos": [
+    {
+      "id": "BALZ_MM_PESOS_A",
+      "nombre": "Balanz Capital Money Market - Clase A",
+      "nombre_api": "Balanz Capital Money Market - Clase A",
+      "tna": 0.18057099999999998,
+      "estado_tasa": "POSITIVA",
+      "tipo_indicador": "TNA_ESTIMADA",
+      "unidad_original": "porcentaje_convencional",
+      "risky": false,
+      "cur": "ARS",
+      "fuente_tasa": "ArgentinaDatos — CNV Cuotapartes, campo tnaEstimada",
+      "fuente_cuotaparte": "ArgentinaDatos — CNV Cuotapartes",
+      "fondoId": "1213",
+      "claseId": "3355",
+      "codigoCNV": "1152",
+      "referencia_cafci": {
+        "fondo_id": "1213",
+        "clase_id": "3355"
+      },
+      "fecha_observacion": "2026-11-20",
+      "periodo_tna": "ultimos7Dias",
+      "dias_base_tna": 7,
+      "retorno_7d": 0.3463,
+      "dias_7d": 7,
+      "retorno_30d": 1.5193,
+      "dias_30d": 30,
+      "retorno_90d": 4.6464,
+      "dias_90d": 91,
+      "valor_cuotaparte": 12907.349,
+      "administradora": "Balanz S.G.F.C.I.S.A.U.",
+      "depositaria": "Banco Comafi S.A.",
+      "moneda_fondo": "Peso Argentino",
+      "plazo_liquidacion_dias": 0,
+      "inversion_minima_informada": 1000,
+      "honorarios_informados": {
+        "honorarioGerente": 2.35,
+        "honorarioDepositaria": 0.1,
+        "comisionIngreso": 0,
+        "comisionEgreso": 0,
+        "comisionTransferencia": 0,
+        "gastosOrdinariosGestion": 0,
+        "comisionExito": null,
+        "otros": null
+      },
+      "estado_dato": "OBSERVADO_UNA_FUENTE",
+      "nivel_validacion": "NOMBRE_CLASE_ADMINISTRADORA_MONEDA_API",
+      "contraste_mercado_dinero": {
+        "fondo": "Balanz Capital Money Market - Clase A",
+        "fecha": "2026-11-20",
+        "vcp": 12907.349,
+        "ccp": 18058249478.11,
+        "patrimonio": 233084125528.72
+      }
+    },
+    {
+      "id": "BALZ_MM_PESOS_L",
+      "nombre": "Balanz Capital Money Market - Clase L Ley N° 27.743",
+      "nombre_api": "Balanz Capital Money Market - Clase L Ley N° 27.743",
+      "tna": 0.18051899999999999,
+      "estado_tasa": "POSITIVA",
+      "tipo_indicador": "TNA_ESTIMADA",
+      "unidad_original": "porcentaje_convencional",
+      "risky": false,
+      "cur": "ARS",
+      "fuente_tasa": "ArgentinaDatos — CNV Cuotapartes, campo tnaEstimada",
+      "fuente_cuotaparte": "ArgentinaDatos — CNV Cuotapartes",
+      "fondoId": "1213",
+      "claseId": "4779",
+      "codigoCNV": "1152",
+      "referencia_cafci": {
+        "fondo_id": "1213",
+        "clase_id": "4779"
+      },
+      "fecha_observacion": "2026-11-20",
+      "periodo_tna": "ultimos7Dias",
+      "dias_base_tna": 7,
+      "retorno_7d": 0.3462,
+      "dias_7d": 7,
+      "retorno_30d": 1.5194,
+      "dias_30d": 30,
+      "retorno_90d": 4.6469,
+      "dias_90d": 91,
+      "valor_cuotaparte": 1762.264,
+      "administradora": "Balanz S.G.F.C.I.S.A.U.",
+      "depositaria": "Banco Comafi S.A.",
+      "moneda_fondo": "Peso Argentino",
+      "plazo_liquidacion_dias": 0,
+      "inversion_minima_informada": 1,
+      "honorarios_informados": {
+        "honorarioGerente": 2.35,
+        "honorarioDepositaria": 0.1,
+        "comisionIngreso": 0,
+        "comisionEgreso": 0,
+        "comisionTransferencia": 0,
+        "gastosOrdinariosGestion": 0,
+        "comisionExito": null,
+        "otros": null
+      },
+      "estado_dato": "OBSERVADO_UNA_FUENTE",
+      "nivel_validacion": "NOMBRE_CLASE_ADMINISTRADORA_MONEDA_API",
+      "contraste_mercado_dinero": {
+        "fondo": "Balanz Capital Money Market - Clase L Ley N° 27.743",
+        "fecha": "2026-11-20",
+        "vcp": 1762.264,
+        "ccp": 23919.76,
+        "patrimonio": 42152.93
+      }
+    },
+    {
+      "id": "BALZ_PERFORMANCE_XIII_D",
+      "nombre": "Balanz Performance XIII - Clase D",
+      "nombre_api": "Balanz Performance XIII - Clase D",
+      "tna": -0.176921,
+      "estado_tasa": "NEGATIVA_OBSERVADA",
+      "tipo_indicador": "TNA_ESTIMADA",
+      "unidad_original": "porcentaje_convencional",
+      "risky": false,
+      "cur": "ARS",
+      "fuente_tasa": "ArgentinaDatos — CNV Cuotapartes, campo tnaEstimada",
+      "fuente_cuotaparte": "ArgentinaDatos — CNV Cuotapartes",
+      "fondoId": "1568",
+      "claseId": "5074",
+      "codigoCNV": "1293",
+      "referencia_cafci": {
+        "fondo_id": "1568",
+        "clase_id": "5074"
+      },
+      "fecha_observacion": "2026-11-20",
+      "periodo_tna": "ultimos7Dias",
+      "dias_base_tna": 7,
+      "retorno_7d": -0.3393,
+      "dias_7d": 7,
+      "retorno_30d": 0.8809,
+      "dias_30d": 30,
+      "retorno_90d": 5.4148,
+      "dias_90d": 91,
+      "valor_cuotaparte": 1653.398,
+      "administradora": "Balanz S.G.F.C.I.S.A.U.",
+      "depositaria": "Banco Comafi S.A.",
+      "moneda_fondo": "Peso Argentino",
+      "plazo_liquidacion_dias": 1,
+      "inversion_minima_informada": 1,
+      "honorarios_informados": {
+        "honorarioGerente": 1.9,
+        "honorarioDepositaria": 0.1,
+        "comisionIngreso": 0,
+        "comisionEgreso": 0,
+        "comisionTransferencia": 0,
+        "gastosOrdinariosGestion": 0,
+        "comisionExito": null,
+        "otros": null
+      },
+      "estado_dato": "OBSERVADO_UNA_FUENTE",
+      "nivel_validacion": "NOMBRE_CLASE_ADMINISTRADORA_MONEDA_API",
+      "contraste_mercado_dinero": null
+    },
+    {
+      "id": "IOL_CASH_MGMT_B",
+      "nombre": "IOL Cash Management - Clase B",
+      "nombre_api": "IOL Cash Management - Clase B",
+      "tna": 0.094535,
+      "estado_tasa": "POSITIVA",
+      "tipo_indicador": "TNA_ESTIMADA",
+      "unidad_original": "porcentaje_convencional",
+      "risky": false,
+      "cur": "ARS",
+      "fuente_tasa": "ArgentinaDatos — CNV Cuotapartes, campo tnaEstimada",
+      "fuente_cuotaparte": "ArgentinaDatos — CNV Cuotapartes",
+      "fondoId": "1301",
+      "claseId": "3698",
+      "codigoCNV": "1246",
+      "referencia_cafci": {
+        "fondo_id": "1301",
+        "clase_id": "3698"
+      },
+      "fecha_observacion": "2026-11-20",
+      "periodo_tna": "ultimos7Dias",
+      "dias_base_tna": 7,
+      "retorno_7d": 0.1813,
+      "dias_7d": 7,
+      "retorno_30d": 1.6957,
+      "dias_30d": 30,
+      "retorno_90d": 6.0172,
+      "dias_90d": 91,
+      "valor_cuotaparte": 12687.833,
+      "administradora": "Adcap Asset Management S.G.F.C.I.S.A.",
+      "depositaria": "Banco Comafi S.A.",
+      "moneda_fondo": "Peso Argentino",
+      "plazo_liquidacion_dias": 2,
+      "inversion_minima_informada": 1,
+      "honorarios_informados": {
+        "honorarioGerente": 2.52,
+        "honorarioDepositaria": 0.121,
+        "comisionIngreso": 0,
+        "comisionEgreso": 0,
+        "comisionTransferencia": 0,
+        "gastosOrdinariosGestion": 0.02,
+        "comisionExito": null,
+        "otros": null
+      },
+      "estado_dato": "OBSERVADO_UNA_FUENTE",
+      "nivel_validacion": "NOMBRE_CLASE_ADMINISTRADORA_MONEDA_API",
+      "contraste_mercado_dinero": null
+    },
+    {
+      "id": "UALINTEC_AHORRO_A",
+      "nombre": "Ualintec Ahorro Pesos - Clase A",
+      "nombre_api": "Ualintec Ahorro Pesos - Clase A",
+      "tna": 0.192303,
+      "estado_tasa": "POSITIVA",
+      "tipo_indicador": "TNA_ESTIMADA",
+      "unidad_original": "porcentaje_convencional",
+      "risky": false,
+      "cur": "ARS",
+      "fuente_tasa": "ArgentinaDatos — CNV Cuotapartes, campo tnaEstimada",
+      "fuente_cuotaparte": "ArgentinaDatos — CNV Cuotapartes",
+      "fondoId": "1307",
+      "claseId": "3713",
+      "codigoCNV": "1202",
+      "referencia_cafci": {
+        "fondo_id": "1307",
+        "clase_id": "3713"
+      },
+      "fecha_observacion": "2026-11-20",
+      "periodo_tna": "ultimos7Dias",
+      "dias_base_tna": 7,
+      "retorno_7d": 0.3688,
+      "dias_7d": 7,
+      "retorno_30d": 1.6592,
+      "dias_30d": 30,
+      "retorno_90d": 4.9843,
+      "dias_90d": 91,
+      "valor_cuotaparte": 8863.032,
+      "administradora": "Ualá Fondos S.A.U.",
+      "depositaria": "Banco de Valores S.A.",
+      "moneda_fondo": "Peso Argentino",
+      "plazo_liquidacion_dias": 0,
+      "inversion_minima_informada": 1,
+      "honorarios_informados": {
+        "honorarioGerente": 2.3,
+        "honorarioDepositaria": 0.1,
+        "comisionIngreso": 0,
+        "comisionEgreso": 0,
+        "comisionTransferencia": 0,
+        "gastosOrdinariosGestion": 0.25,
+        "comisionExito": null,
+        "otros": null
+      },
+      "estado_dato": "OBSERVADO_UNA_FUENTE",
+      "nivel_validacion": "NOMBRE_CLASE_ADMINISTRADORA_MONEDA_API",
+      "contraste_mercado_dinero": null
+    },
+    {
+      "id": "UALINTEC_PESOS_PLUS_A",
+      "nombre": "Ualintec Pesos Plus - Clase A",
+      "nombre_api": "Ualintec Pesos Plus - Clase A",
+      "tna": 0.157002,
+      "estado_tasa": "POSITIVA",
+      "tipo_indicador": "TNA_ESTIMADA",
+      "unidad_original": "porcentaje_convencional",
+      "risky": false,
+      "cur": "ARS",
+      "fuente_tasa": "ArgentinaDatos — CNV Cuotapartes, campo tnaEstimada",
+      "fuente_cuotaparte": "ArgentinaDatos — CNV Cuotapartes",
+      "fondoId": "1564",
+      "claseId": "5021",
+      "codigoCNV": "1565",
+      "referencia_cafci": {
+        "fondo_id": "1564",
+        "clase_id": "5021"
+      },
+      "fecha_observacion": "2026-11-20",
+      "periodo_tna": "ultimos7Dias",
+      "dias_base_tna": 7,
+      "retorno_7d": 0.3011,
+      "dias_7d": 7,
+      "retorno_30d": 2.0186,
+      "dias_30d": 30,
+      "retorno_90d": 6.7503,
+      "dias_90d": 91,
+      "valor_cuotaparte": 2086.895,
+      "administradora": "Ualá Fondos S.A.U.",
+      "depositaria": "Banco de Valores S.A.",
+      "moneda_fondo": "Peso Argentino",
+      "plazo_liquidacion_dias": 1,
+      "inversion_minima_informada": 1,
+      "honorarios_informados": {
+        "honorarioGerente": 2.5,
+        "honorarioDepositaria": 0.1,
+        "comisionIngreso": 0,
+        "comisionEgreso": 0,
+        "comisionTransferencia": 0,
+        "gastosOrdinariosGestion": 0.15,
+        "comisionExito": null,
+        "otros": null
+      },
+      "estado_dato": "OBSERVADO_UNA_FUENTE",
+      "nivel_validacion": "NOMBRE_CLASE_ADMINISTRADORA_MONEDA_API",
+      "contraste_mercado_dinero": null
+    }
+  ],
+  "diagnostico_vehiculos": {
+    "BALZ_MM_PESOS_A": {
+      "estado": "IDENTIFICADO_Y_PUBLICADO",
+      "detalle": "Coincidencia exacta por fondoId/claseId; nombre, clase, administradora, código CNV y moneda validados.",
+      "candidatos": 1,
+      "fondoId_argentinadatos": "1213",
+      "claseId_argentinadatos": "3355",
+      "codigoCNV": "1152"
+    },
+    "BALZ_MM_PESOS_L": {
+      "estado": "IDENTIFICADO_Y_PUBLICADO",
+      "detalle": "Coincidencia exacta por fondoId/claseId; nombre, clase, administradora, código CNV y moneda validados.",
+      "candidatos": 1,
+      "fondoId_argentinadatos": "1213",
+      "claseId_argentinadatos": "4779",
+      "codigoCNV": "1152"
+    },
+    "BALZ_PERFORMANCE_XIII_D": {
+      "estado": "IDENTIFICADO_Y_PUBLICADO",
+      "detalle": "Coincidencia exacta por fondoId/claseId; nombre, clase, administradora, código CNV y moneda validados.",
+      "candidatos": 1,
+      "fondoId_argentinadatos": "1568",
+      "claseId_argentinadatos": "5074",
+      "codigoCNV": "1293"
+    },
+    "IOL_CASH_MGMT_B": {
+      "estado": "IDENTIFICADO_Y_PUBLICADO",
+      "detalle": "Coincidencia exacta por fondoId/claseId; nombre, clase, administradora, código CNV y moneda validados.",
+      "candidatos": 1,
+      "fondoId_argentinadatos": "1301",
+      "claseId_argentinadatos": "3698",
+      "codigoCNV": "1246"
+    },
+    "UALINTEC_AHORRO_A": {
+      "estado": "IDENTIFICADO_Y_PUBLICADO",
+      "detalle": "Coincidencia exacta por fondoId/claseId; nombre, clase, administradora, código CNV y moneda validados.",
+      "candidatos": 1,
+      "fondoId_argentinadatos": "1307",
+      "claseId_argentinadatos": "3713",
+      "codigoCNV": "1202"
+    },
+    "UALINTEC_PESOS_PLUS_A": {
+      "estado": "IDENTIFICADO_Y_PUBLICADO",
+      "detalle": "Coincidencia exacta por fondoId/claseId; nombre, clase, administradora, código CNV y moneda validados.",
+      "candidatos": 1,
+      "fondoId_argentinadatos": "1564",
+      "claseId_argentinadatos": "5021",
+      "codigoCNV": "1565"
+    }
+  },
+  "vehiculos_omitidos_o_no_cubiertos": []
+}
