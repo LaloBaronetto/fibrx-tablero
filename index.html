@@ -532,7 +532,7 @@ Presupuesto Mínimo Vital estimado: <b class="moneda" id="totalPMV">$ 560.000</b
   <p class="dim">Pasados unos meses: ¿lo compraste? ¿Cuántas veces lo usaste? El costo por uso real corrige la predicción.</p>
   <div class="table-wrap" role="region" aria-label="Registro de decisiones; desplazamiento horizontal disponible">
   <table>
-    <thead><tr><th>Fecha</th><th>Ítem</th><th>Monto</th><th>Decisión</th><th>Usos reales</th><th>Costo por uso</th><th>Veredicto (Perfilado)</th><th></th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Ítem</th><th>Monto</th><th>Decisión</th><th>Usos reales</th><th>Costo por uso</th><th>Lectura del costo</th><th></th></tr></thead>
     <tbody id="tablaRegistro"></tbody>
   </table>
   </div>
@@ -1522,27 +1522,24 @@ function renderRegistro(){
 
   tbody.innerHTML = reg.map(r=>{
     const costoTotal = r.tipo === "RECURRENTE" ? r.monto * r.meses : r.monto;
-    let usosHtml, cpuHtml, veredicto;
+    let usosHtml, cpuHtml, lecturaCosto;
     if(r.usosReales==null){
       usosHtml = `<input type="number" min="0" step="any" style="width:90px"
         onchange="registrarUsos('${r.check_id}',this.value)" placeholder="¿usos?">`;
       cpuHtml = `<span class="dim">—</span>`;
-      veredicto = `<span class="dim">— pendiente —</span>`;
+      lecturaCosto = `<span class="dim">Pendiente de registrar usos</span>`;
     } else {
       const cpu = r.usosReales > 0 ? costoTotal / r.usosReales : null;
-      // Heurística configurable (0,5% del ingreso); no es un estándar técnico ni contable.
-      const umbralPerfil = r.ingreso ? (r.ingreso * 0.005) : 2000;
-      const eficiente = cpu !== null && cpu <= umbralPerfil;
       usosHtml = `<span class="moneda">${r.usosReales}</span>`;
       cpuHtml = cpu === null ? `<span class="dim">No calculable (0 usos)</span>` : `<span class="moneda">${fmt(cpu)}</span>`;
-      veredicto = cpu === null ? `<span class="dim">No evaluable</span>` : (eficiente
-        ? `<span class="veredicto-eficiente">✔ Dentro del umbral orientativo (&le; ${fmt(umbralPerfil)})</span>`
-        : `<span class="veredicto-caro">✘ Supera el umbral orientativo (> ${fmt(umbralPerfil)})</span>`);
+      lecturaCosto = cpu === null
+        ? `<span class="dim">No evaluable: no se registraron usos</span>`
+        : `<span class="dim">Dato descriptivo; no se aplica un umbral arbitrario de conveniencia.</span>`;
     }
     return `<tr><td>${escHTML(String(r.fecha||"").slice(0,10))}</td><td>${escHTML(r.item)}</td>
       <td class="moneda">${fmt(costoTotal)}${r.tipo==="RECURRENTE"?` ( ${fmt(r.monto)}/mes × ${r.meses} )`:""}</td>
       <td>${escHTML(r.decision)}</td><td>${usosHtml}</td><td>${cpuHtml}</td>
-      <td>${veredicto}</td>
+      <td>${lecturaCosto}</td>
       <td><button onclick="borrarRegistro('${r.check_id}')" style="background:none;border:none;color:#e78a8a">✕</button></td></tr>`;
   }).join("");
 }
@@ -1562,6 +1559,7 @@ const porcentajePuntos = value => {
   return Number.isFinite(n) ? `${n.toLocaleString("es-AR",{maximumFractionDigits:4})}%` : "No informado";
 };
 const porcentajeFraccion = value => {
+  if(value===null || value===undefined || value==="") return "No informado";
   const n=Number(value);
   return Number.isFinite(n) ? `${(n*100).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:4})}%` : "No informado";
 };
@@ -1578,9 +1576,15 @@ const fmtDato = value => {
 };
 function monedaComparableFCI(value){
   if(typeof value!=="string"||!value.trim())return null;
-  const m=value.trim().toUpperCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+  const m=value.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   if(m==="ARS"||m==="PESO ARGENTINO"||m==="PESOS ARGENTINOS"||m==="PESO"||m==="PESOS")return "ARS";
   return null;
+}
+function tnaValidaFCI(value){
+  if(value===null || value===undefined || value==="" || typeof value==="boolean") return false;
+  const n=Number(value);
+  // El motor de ingesta publica la TNA como fracción; cero y valores fuera de rango no son válidos.
+  return Number.isFinite(n) && n!==0 && Math.abs(n)<=5;
 }
 function nombreVisibleFCI(v,cfg){
   const candidatos=[v?.nombre,v?.nombre_api,cfg?.nombre];
@@ -1607,8 +1611,8 @@ function renderCatalogoFCI(data){
       </article>`;
     }
 
-    const tna=Number(v.tna);
-    const tnaInformada=Number.isFinite(tna)&&Math.abs(tna)<=5;
+    const tnaInformada=tnaValidaFCI(v.tna);
+    const tna=tnaInformada?Number(v.tna):null;
     const tnaDisponible=tnaInformada&&tna>0;
     const monedaARS=monedaComparableFCI(v.moneda_fondo)==="ARS";
     const comparable=tnaDisponible&&monedaARS;
@@ -1647,18 +1651,21 @@ function renderCatalogoFCI(data){
 
   const publicados=FCI_OBJETIVO.filter(x=>externos.has(x.id)).length;
   const conTasa=(Array.isArray(data?.vehiculos)?data.vehiculos:[])
-    .filter(v=>Number.isFinite(Number(v.tna))&&Math.abs(Number(v.tna))<=5).length;
+    .filter(v=>tnaValidaFCI(v.tna)).length;
   document.getElementById("estadoCatalogoFci").textContent=
     `${publicados} de ${FCI_OBJETIVO.length} fondos con datos · ${conTasa} con TNA disponible · Fuente: ArgentinaDatos`;
 }
 function validarCatalogoTasas(data){
-  if(!data||data.estado_global!=="DATOS_ARGENTINADATOS_UNA_FUENTE"||!Array.isArray(data.vehiculos))
-    throw new Error("El JSON no tiene el estado o la estructura esperada.");
+  if(!data || data.schema_version!==6 || data.estado_global!=="DATOS_ARGENTINADATOS_UNA_FUENTE" || !Array.isArray(data.vehiculos))
+    throw new Error("JSON FCI incompatible: se esperaba schema_version 6, estado de una fuente y una lista de vehículos.");
   const ids=new Set();
   for(const v of data.vehiculos){
-    if(!v||typeof v.id!=="string"||!v.id.trim())throw new Error("Registro sin ID en el catálogo.");
-    if(ids.has(v.id))throw new Error("ID duplicado en el catálogo: "+v.id);
+    if(!v || typeof v.id!=="string" || !v.id.trim()) throw new Error("Registro sin ID en el catálogo.");
+    if(ids.has(v.id)) throw new Error("ID duplicado en el catálogo: "+v.id);
     ids.add(v.id);
+    if(v.tna!==null && v.tna!==undefined && v.tna!=="" && !tnaValidaFCI(v.tna)){
+      console.warn("FIBRX: TNA inválida; el registro se conserva visible pero no se incorpora al Plan B:",v.id,v.tna);
+    }
   }
   return data;
 }
@@ -1677,14 +1684,16 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
   const externos=new Map(data.vehiculos.map(v=>[v.id,v]));
   const locales=new Map(VEHICULOS.map(v=>[v.id,v]));
   const actualizados=[];
+  const diagnostico={ausentes:0,tnaNoValida:0,tnaNegativa:0,monedaNoARS:0,incorporadas:0};
   for(const cfg of FCI_OBJETIVO){
     const ext=externos.get(cfg.id);
-    if(!ext)continue;
+    if(!ext){diagnostico.ausentes++;continue;}
+    if(!tnaValidaFCI(ext.tna)){diagnostico.tnaNoValida++;continue;}
     const tna=Number(ext.tna);
-    if(!Number.isFinite(tna)||tna<=0||tna>5)continue; // El JSON expresa TNA como fracción.
+    if(tna<0){diagnostico.tnaNegativa++;continue;} // Se muestra en catálogo; no se proyecta como acumulación positiva.
     // Solo se incorpora al Plan B en pesos si la moneda está explícitamente identificada como ARS.
-    // "Peso Argentino" y variantes equivalentes se normalizan; moneda ausente o extranjera no se presume ARS.
-    if(monedaComparableFCI(ext.moneda_fondo)!=="ARS")continue;
+    // Moneda ausente o extranjera no se presume ARS.
+    if(monedaComparableFCI(ext.moneda_fondo)!=="ARS"){diagnostico.monedaNoARS++;continue;}
     const local=locales.get(cfg.id)||{};
     actualizados.push({...local,...ext,
       nombre:ext.nombre||ext.nombre_api||local.nombre||cfg.nombre,
@@ -1694,6 +1703,7 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
       datoLocalNoVerificado:false
     });
   }
+  diagnostico.incorporadas=actualizados.length;
   VEHICULOS=[...actualizados,...VEHICULOS.filter(v=>v.risky)];
   document.getElementById("origenTasas").textContent=origen+" — una fuente pública; clases FCI individuales";
   const fecha=data.fecha_datos_fuente||data.actualizado_el||"Fecha no informada";
@@ -1704,7 +1714,7 @@ function aplicarDatosTasas(data,origen="ArgentinaDatos"){
   const tnaNegativa=recibidos.filter(v=>v.tna!==null&&v.tna!==undefined&&v.tna!==""&&Number.isFinite(Number(v.tna))&&Number(v.tna)<0&&Math.abs(Number(v.tna))<=5).length;
   const sinTNA=recibidos.filter(v=>{const n=Number(v.tna);return v.tna===null||v.tna===undefined||v.tna===""||!Number.isFinite(n)||n===0||Math.abs(n)>5;}).length;
   document.getElementById("estadoCatalogoFci").textContent=
-    `${recibidos.length} clases recibidas · ${actualizados.length} incorporadas al Plan B ARS · ${sinMonedaARS} excluidas por moneda no ARS/no informada · ${tnaNegativa} con TNA negativa (visible, no proyectada) · ${sinTNA} sin TNA válida`;
+    `${recibidos.length}/${FCI_OBJETIVO.length} clases recibidas · ${diagnostico.incorporadas} incorporadas al Plan B ARS · ${diagnostico.ausentes} ausentes · ${diagnostico.tnaNoValida} con TNA nula/ inválida · ${diagnostico.tnaNegativa} con TNA negativa (visible, no proyectada) · ${diagnostico.monedaNoARS} con moneda no ARS/no informada.`;
   if(!actualizados.length)document.getElementById("origenTasas").textContent="Catálogo recibido, pero sin TNA ARS utilizable para calcular";
 }
 async function cargarTasasDelJSON(){
