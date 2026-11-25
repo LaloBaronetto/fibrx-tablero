@@ -1,4 +1,3 @@
-
 name: Actualización de ON FIBRX
 
 on:
@@ -22,6 +21,10 @@ jobs:
         with:
           ref: main
 
+      - name: Preparar salida limpia
+        run: |
+          rm -f ons_mercado.json
+
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
@@ -43,7 +46,7 @@ jobs:
           echo "Código de salida del motor: $rc"
           exit 0
 
-      - name: Validar y resumir JSON generado
+      - name: Validar y resumir JSON generado en esta ejecución
         id: validar
         if: always()
         run: |
@@ -51,28 +54,76 @@ jobs:
           import json
           from pathlib import Path
 
+          esperado = {"YM34D", "AEC3O", "IRCPO", "TLCPO"}
           p = Path("ons_mercado.json")
 
           if not p.is_file() or p.stat().st_size == 0:
-              print("No se generó ons_mercado.json")
-              raise SystemExit(1)
+              raise SystemExit("ERROR: esta ejecución no generó ons_mercado.json")
 
-          data = json.loads(p.read_text(encoding="utf-8"))
+          try:
+              data = json.loads(p.read_text(encoding="utf-8"))
+          except Exception as exc:
+              raise SystemExit(f"ERROR: JSON ilegible: {type(exc).__name__}: {exc}")
 
-          print("JSON válido")
+          if not isinstance(data, dict):
+              raise SystemExit("ERROR: la raíz del JSON no es un objeto")
+          if data.get("schema_version") != 3:
+              raise SystemExit(
+                  f"ERROR: schema_version inesperado: {data.get('schema_version')!r}"
+              )
+          if not data.get("fecha_consulta_utc"):
+              raise SystemExit("ERROR: falta fecha_consulta_utc")
+
+          instrumentos = data.get("instrumentos")
+          if not isinstance(instrumentos, list):
+              raise SystemExit("ERROR: instrumentos no es una lista")
+
+          tickers = [
+              item.get("ticker")
+              for item in instrumentos
+              if isinstance(item, dict)
+          ]
+          if len(tickers) != len(instrumentos):
+              raise SystemExit("ERROR: hay elementos de instrumentos con formato inválido")
+          if len(tickers) != len(set(tickers)):
+              raise SystemExit("ERROR: hay tickers duplicados en instrumentos")
+          if set(tickers) != esperado:
+              raise SystemExit(
+                  "ERROR: conjunto de tickers inesperado. "
+                  f"Esperados={sorted(esperado)}; recibidos={sorted(tickers)}"
+              )
+
+          for item in instrumentos:
+              if not isinstance(item.get("mercado"), dict):
+                  raise SystemExit(
+                      f"ERROR: mercado inválido para {item.get('ticker')}"
+                  )
+              if not isinstance(item.get("controles_publicacion_individuales"), dict):
+                  raise SystemExit(
+                      f"ERROR: faltan controles de publicación para {item.get('ticker')}"
+                  )
+
+          print("JSON válido y generado en esta ejecución")
+          print("Schema:", data["schema_version"])
           print("Estado general:", data.get("estado_general"))
           print("Fecha UTC:", data.get("fecha_consulta_utc"))
+          print("Tickers:", ", ".join(sorted(tickers)))
+          control = data.get("control_publicacion", {})
+          print("Estado publicación precio:", control.get("estado_publicacion_precio"))
+          print("Estado publicación indicadores:", control.get("estado_publicacion_indicadores"))
 
-          for item in data.get("instrumentos", []):
-              mercado = item.get("mercado", {})
+          for item in instrumentos:
+              mercado = item["mercado"]
               print(
-                  item.get("ticker"),
+                  item["ticker"],
                   "| estado:", mercado.get("estado"),
-                  "| precio:", mercado.get("precio"),
-                  "| TIR API:", mercado.get("tir_api_pct"),
-                  "| operaciones:", mercado.get("operaciones"),
+                  "| precio especie:", mercado.get("precio_especie"),
+                  "| moneda:", mercado.get("moneda_precio_especie"),
+                  "| TIR proveedor:", mercado.get("tir_api_pct"),
+                  "| duration proveedor:", mercado.get("duration_api"),
                   "| precio utilizable:", mercado.get("precio_utilizable"),
-                  "| indicadores utilizables:", mercado.get("indicadores_utilizables"),
+                  "| TIR publicable:", mercado.get("tir_publicable_proveedor"),
+                  "| duration publicable:", mercado.get("duration_publicable_proveedor"),
               )
           PY
 
@@ -83,7 +134,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add ons_mercado.json
-
           if git diff --cached --quiet; then
             echo "El JSON no presenta cambios. No se necesita un nuevo commit."
           else
@@ -93,7 +143,7 @@ jobs:
             echo "JSON de ON publicado correctamente en main."
           fi
 
-      - name: Guardar JSON como artefacto de diagnóstico
+      - name: Guardar JSON fresco como artefacto de diagnóstico
         if: always() && hashFiles('ons_mercado.json') != ''
         uses: actions/upload-artifact@v4
         with:
@@ -106,11 +156,16 @@ jobs:
         if: always()
         run: |
           code='${{ steps.ingesta.outputs.exit_code }}'
+          validation='${{ steps.validar.outcome }}'
 
           if [ "$code" != "0" ]; then
             echo "El motor terminó con código $code. Revisar los logs."
             exit 1
           fi
 
-          echo "El motor terminó correctamente."
-          echo "Verificar ons_mercado.json en el repositorio."
+          if [ "$validation" != "success" ]; then
+            echo "El JSON generado no superó las validaciones."
+            exit 1
+          fi
+
+          echo "Ingesta y validación completadas correctamente."
